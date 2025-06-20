@@ -42,16 +42,19 @@
       line_bot_api.reply_message(ReplyMessageRequest(reply_token=event.r
   eply_token, messages=[TextMessage(text=lumi_response)]))
 
-  from flask import Flask
+  from flask import Flask, request
+  import os
+
   app = Flask(__name__)
 
   @app.route("/")
   def hello():
-      return "Lumi露米在這裡！"
+      return "✨ Lumi露米在這裡陪伴你 ✨"
 
   @app.route("/webhook", methods=['POST'])
   def webhook():
       return "OK"
 
   if __name__ == "__main__":
-      app.run(host='0.0.0.0', port=8080)
+      port = int(os.environ.get('PORT', 8080))
+      app.run(host='0.0.0.0', port=port)
