@@ -273,10 +273,10 @@ def get_lumi_response(message, user_id):
                 # 取得最近3句對話作為上下文
                 recent_memories = memory_manager.get_recent_memories(user_id, 3)
                 if recent_memories:
-                    recent_context = "最近對話：\\n"
+                    recent_context = "最近對話：\n"
                     for mem in recent_memories[-2:]:  # 只用最近2句
-                        recent_context += f"用戶：{mem['user_message'][:30]}...\\n"
-                        recent_context += f"露米：{mem['lumi_response'][:30]}...\\n"
+                        recent_context += f"用戶：{mem['user_message'][:30]}...\n"
+                        recent_context += f"露米：{mem['lumi_response'][:30]}...\n"
                 
             except Exception as e:
                 print(f"記憶檢索錯誤: {e}")
