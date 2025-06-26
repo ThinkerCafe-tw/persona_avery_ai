@@ -69,7 +69,20 @@ try:
             # 重新序列化為乾淨的 JSON
             clean_credentials = json.dumps(credentials_dict, indent=2)
             
-            print(f"🔑 Private Key 預覽: {credentials_dict.get('private_key', 'N/A')[:50]}...")
+            # 詳細檢查 private key
+            private_key = credentials_dict.get('private_key', '')
+            print(f"🔑 Private Key 預覽: {private_key[:50]}...")
+            print(f"🔑 Private Key 長度: {len(private_key)} 字符")
+            print(f"🔑 開頭檢查: {private_key.startswith('-----BEGIN PRIVATE KEY-----')}")
+            print(f"🔑 結尾檢查: {private_key.endswith('-----END PRIVATE KEY-----')}")
+            
+            # 檢查 base64 內容
+            key_lines = private_key.split('\n')
+            valid_lines = [line for line in key_lines if line and not line.startswith('-----')]
+            print(f"🔑 Base64 行數: {len(valid_lines)}")
+            if valid_lines:
+                print(f"🔑 第一行長度: {len(valid_lines[0])}")
+                print(f"🔑 最後行長度: {len(valid_lines[-1]) if valid_lines else 0}")
             
         except json.JSONDecodeError as e:
             print(f"❌ JSON 解析失敗: {e}")
@@ -385,8 +398,23 @@ def get_lumi_response(message, user_id):
 4. 保持對話連貫性"""
 
         # 使用企業級Vertex AI或備用API
-        response = model.generate_content(prompt)
-        return response.text.strip()
+        if USE_VERTEX_AI:
+            try:
+                response = model.generate_content(prompt)
+                return response.text.strip()
+            except Exception as vertex_error:
+                print(f"⚠️ Vertex AI 調用失敗，切換到備用API: {vertex_error}")
+                # 臨時切換到備用API
+                try:
+                    backup_model = genai.GenerativeModel('gemini-1.5-flash')
+                    response = backup_model.generate_content(prompt)
+                    return response.text.strip()
+                except Exception as backup_error:
+                    print(f"❌ 備用API也失敗: {backup_error}")
+                    return "抱歉，我現在有點忙，稍後再試試吧！"
+        else:
+            response = model.generate_content(prompt)
+            return response.text.strip()
     except Exception as e:
         print(f"錯誤: {e}")
         return "嗨！我是露米，不好意思剛剛恍神了一下，可以再說一次嗎？"
