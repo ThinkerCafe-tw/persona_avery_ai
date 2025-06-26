@@ -42,8 +42,20 @@ try:
         
         # 嘗試解析和清理 JSON
         try:
+            # 清理可能的控制字符和格式問題
+            import re
+            
+            # 移除可能的控制字符
+            cleaned_json = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', vertex_credentials)
+            # 移除多餘的空白字符
+            cleaned_json = cleaned_json.strip()
+            
+            print(f"🧹 JSON 清理前長度: {len(vertex_credentials)}")
+            print(f"🧹 JSON 清理後長度: {len(cleaned_json)}")
+            print(f"🔍 JSON 前100字符: {cleaned_json[:100]}...")
+            
             # 先嘗試解析 JSON 確保格式正確
-            credentials_dict = json.loads(vertex_credentials)
+            credentials_dict = json.loads(cleaned_json)
             
             # 清理 private_key 中的轉義字符
             if 'private_key' in credentials_dict:
@@ -61,6 +73,7 @@ try:
             
         except json.JSONDecodeError as e:
             print(f"❌ JSON 解析失敗: {e}")
+            print(f"🔍 問題位置附近: {vertex_credentials[max(0, e.pos-20):e.pos+20]}")
             raise Exception(f"無效的 JSON 格式: {e}")
         
         # 將清理後的JSON寫入暫存檔案
