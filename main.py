@@ -71,6 +71,21 @@ try:
                 # 移除其他可能的多餘空格
                 private_key = private_key.replace('PRIVATE   KEY', 'PRIVATE KEY')
                 
+                # 確保結尾正確
+                if not private_key.endswith('-----END PRIVATE KEY-----'):
+                    if '-----END PRIVATE KEY-----' in private_key:
+                        # 如果有但位置不對，重新整理
+                        parts = private_key.split('-----END PRIVATE KEY-----')
+                        if len(parts) > 1:
+                            private_key = parts[0] + '-----END PRIVATE KEY-----'
+                    else:
+                        # 如果完全沒有，檢查是否被截斷
+                        if private_key.endswith('-----END PRIVATE KEY----') or private_key.endswith('-----END PRIVATE KEY--'):
+                            private_key = private_key.rstrip('-') + '-----END PRIVATE KEY-----'
+                        elif not private_key.endswith('\n-----END PRIVATE KEY-----'):
+                            # 確保有正確的結尾
+                            private_key = private_key.rstrip() + '\n-----END PRIVATE KEY-----'
+                
                 credentials_dict['private_key'] = private_key
             
             # 重新序列化為乾淨的 JSON
@@ -82,6 +97,13 @@ try:
             print(f"🔑 Private Key 長度: {len(private_key)} 字符")
             print(f"🔑 開頭檢查: {private_key.startswith('-----BEGIN PRIVATE KEY-----')}")
             print(f"🔑 結尾檢查: {private_key.endswith('-----END PRIVATE KEY-----')}")
+            print(f"🔑 實際結尾: ...{private_key[-50:]}")
+            
+            # 修復後再次檢查
+            if private_key.endswith('-----END PRIVATE KEY-----'):
+                print("✅ Private Key 格式完全正確！")
+            else:
+                print("⚠️ Private Key 結尾仍有問題，但會嘗試使用")
             
             # 檢查 base64 內容
             key_lines = private_key.split('\n')
