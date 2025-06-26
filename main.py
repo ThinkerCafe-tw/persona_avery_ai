@@ -443,12 +443,19 @@ def handle_message(event):
         
     except Exception as e:
         print(f"❌ 處理訊息時發生錯誤: {e}")
-        # 發送錯誤回應
+        # 根據錯誤類型給出不同回應
+        error_message = "抱歉，我剛剛恍神了一下，可以再說一次嗎？"
+        
+        if "429" in str(e) or "quota" in str(e).lower():
+            error_message = "欸～我今天聊太多了，需要休息一下！明天再來找我玩吧 😴"
+        elif "timeout" in str(e).lower():
+            error_message = "網路有點慢，讓我想想...可以再說一次嗎？"
+        
         try:
             line_bot_api.reply_message(
                 ReplyMessageRequest(
                     reply_token=event.reply_token,
-                    messages=[TextMessage(text="抱歉，我剛剛恍神了一下，可以再說一次嗎？")]
+                    messages=[TextMessage(text=error_message)]
                 )
             )
         except:
