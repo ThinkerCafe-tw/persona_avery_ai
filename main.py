@@ -98,18 +98,21 @@ def generate_daily_summary(user_id):
 def analyze_emotion(message):
     """分析用戶情緒，返回對應的人格類型"""
     
-    # 優先使用關鍵詞規則確保一致性
+    # 優先使用關鍵詞規則確保一致性（強制執行）
     message_lower = message.lower()
     
-    # Wisdom模式關鍵詞（哲學、人生智慧類）
+    # Wisdom模式關鍵詞（哲學、人生智慧類）- 強制優先級最高
     wisdom_keywords = [
         '直覺', '內心聲音', '生活感悟', '人生哲理', '生活哲學', 
         '人生意義', '價值觀', '自我認知', '內在智慧', '人生道理',
         '處世', '人生選擇', '生命意義', '存在', '本質', '真實自我'
     ]
     
-    if any(keyword in message_lower for keyword in wisdom_keywords):
-        return 'wisdom'
+    # 強制檢查：只要包含wisdom關鍵詞就直接返回
+    for keyword in wisdom_keywords:
+        if keyword in message_lower:
+            print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> 強制wisdom模式")
+            return 'wisdom'
     
     # Soul模式關鍵詞（心理探索、情感成長）
     soul_keywords = [

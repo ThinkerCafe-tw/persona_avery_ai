@@ -1,0 +1,4 @@
+# Railway Deployment Test
+# 強制觸發重新部署
+# Timestamp: 2025-06-26 17:30:00
+# 修正：直覺關鍵詞強制wisdom模式
