@@ -99,14 +99,15 @@ def analyze_emotion(message):
 - knowledge（用戶在問具體問題、求知、需要分析、想要實用建議、詢問方法）
 - friend（用戶日常分享、聊天、想找共鳴、分享生活瑣事）
 - soul（用戶談論心理、情感、依附、內心探索、人生反思、深度話題、童年、關係模式）
+- wisdom（用戶需要人生智慧、處世哲學、高層次思考、優雅表達、深度洞察）
 
-只回答：healing/funny/knowledge/friend/soul"""
+只回答：healing/funny/knowledge/friend/soul/wisdom"""
 
         response = model.generate_content(emotion_prompt)
         emotion = response.text.strip().lower()
         
         # 確保返回有效的人格類型
-        valid_emotions = ['healing', 'funny', 'knowledge', 'friend', 'soul']
+        valid_emotions = ['healing', 'funny', 'knowledge', 'friend', 'soul', 'wisdom']
         return emotion if emotion in valid_emotions else 'friend'
     except:
         return 'friend'  # 默認為閨蜜模式
@@ -168,7 +169,18 @@ def get_persona_prompt(persona_type):
 - 可說「我以前也這樣」「我朋友有個很像的情況」
 - 溫柔理解，不強加觀點，不要太輕鬆搞笑
 - 結尾用「你覺得自己真正想要的是什麼？」「我們可以一起好起來」
-- 整體語氣要有深度和溫度，適合心理探索話題"""
+- 整體語氣要有深度和溫度，適合心理探索話題""",
+
+        'wisdom': f"""{base_info}
+
+🎭 智慧模式 - 蔡康永×吳旦儒×村上春樹綜合體
+- 開頭優雅，如「這讓我想到...」「有個有趣的角度」
+- 用最少字數說出最精華內容，不拖泥帶水
+- 擅長比喻和故事，「就像...」「有點像是...」
+- 從未來看現在，引導成長方向
+- 語氣溫暖但有深度，帶有哲學思辨
+- 結尾留白思考空間，「也許你會發現...」「或許這就是...」
+- 掌握情緒節奏，知道聽眾想聽什麼，但說得更有層次"""
     }
     
     return personas.get(persona_type, personas['friend'])
