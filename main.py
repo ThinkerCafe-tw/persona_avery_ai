@@ -28,8 +28,25 @@ try:
     # 檢查是否有Vertex AI環境變數
     vertex_project = os.getenv('VERTEX_AI_PROJECT_ID')
     vertex_location = os.getenv('VERTEX_AI_LOCATION', 'us-central1')
+    vertex_credentials = os.getenv('GOOGLE_APPLICATION_CREDENTIALS_JSON')
     
-    if vertex_project:
+    print(f"🔍 檢查Vertex AI設定:")
+    print(f"   Project ID: {vertex_project}")
+    print(f"   Location: {vertex_location}")
+    print(f"   Credentials: {'已設定' if vertex_credentials else '未設定'}")
+    
+    if vertex_project and vertex_credentials:
+        # 設定認證
+        import json
+        import tempfile
+        
+        # 將JSON字串寫入暫存檔案
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            f.write(vertex_credentials)
+            credentials_path = f.name
+        
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+        
         # 初始化Vertex AI
         aiplatform.init(
             project=vertex_project,
@@ -41,14 +58,20 @@ try:
         print(f"✅ 企業級Vertex AI已初始化 (Project: {vertex_project})")
         USE_VERTEX_AI = True
     else:
-        raise Exception("Vertex AI環境變數未設置")
+        raise Exception(f"Vertex AI環境變數不完整: Project={vertex_project}, Credentials={'已設定' if vertex_credentials else '未設定'}")
     
 except Exception as e:
     print(f"⚠️ Vertex AI初始化失敗，使用備用API: {e}")
     # 備用方案：使用原有的API
-    genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    USE_VERTEX_AI = False
+    try:
+        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        print("🔄 備用Gemini API已初始化")
+        USE_VERTEX_AI = False
+    except Exception as backup_error:
+        print(f"❌ 備用API也失敗: {backup_error}")
+        model = None
+        USE_VERTEX_AI = False
 
 # 初始化簡化記憶系統
 try:
