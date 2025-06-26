@@ -391,28 +391,18 @@ def get_lumi_response(message, user_id):
         # 1. 分析用戶情緒，選擇人格
         persona_type = analyze_emotion(message)
         
-        # 2. 檢索相關記憶和上下文（強化版）
+        # 2. 暫時停用記憶上下文（防止假記憶生成）
         memory_context = ""
         recent_context = ""
-        if memory_manager:
-            try:
-                # 取得相關情緒記憶
-                memory_context = memory_manager.get_context_for_response(
-                    user_id=user_id,
-                    current_message=message,
-                    emotion_tag=persona_type
-                )
-                
-                # 取得最近3句對話作為上下文
-                recent_memories = memory_manager.get_recent_memories(user_id, 3)
-                if recent_memories:
-                    recent_context = "最近對話：\n"
-                    for mem in recent_memories[-2:]:  # 只用最近2句
-                        recent_context += f"用戶：{mem['user_message'][:30]}...\n"
-                        recent_context += f"露米：{mem['lumi_response'][:30]}...\n"
-                
-            except Exception as e:
-                print(f"記憶檢索錯誤: {e}")
+        print("🚨 記憶上下文已暫時停用，防止假記憶生成")
+        
+        # 原記憶系統程式碼已註解，等修復假記憶問題後再啟用
+        # if memory_manager:
+        #     try:
+        #         memory_context = memory_manager.get_context_for_response(...)
+        #         recent_memories = memory_manager.get_recent_memories(...)
+        #     except Exception as e:
+        #         print(f"記憶檢索錯誤: {e}")
         
         # 3. 獲取對應人格的提示詞
         persona_prompt = get_persona_prompt(persona_type)
@@ -428,11 +418,16 @@ def get_lumi_response(message, user_id):
 
 用戶說：{message}
 
+🚨 **重要提醒**：
+- **絕對不要編造任何假的記憶、經歷或故事**
+- **不要說「上次你...」「記得你...」「之前我們...」等假的回憶**
+- **如果沒有真實記憶，就直接回應當下的問題**
+
 請以露米的身份，用{persona_type}人格特色自然回應。注意：
-1. 參考最近對話延續話題
-2. 用適合的情緒人格回應
-3. 自然提及相關記憶
-4. 保持對話連貫性"""
+1. 直接回應用戶的問題
+2. 用適合的情緒人格特色
+3. **只使用真實存在的記憶，沒有就不要假裝有**
+4. 保持自然對話"""
 
         # 使用企業級Vertex AI或備用API
         if USE_VERTEX_AI:
