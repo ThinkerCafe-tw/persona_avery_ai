@@ -96,22 +96,22 @@ def generate_daily_summary(user_id):
         return "欸～生成日記摘要時出現了問題，不過沒關係啦！我們繼續聊天吧 😅"
 
 def analyze_emotion(message):
-    """分析用戶情緒，返回對應的人格類型"""
+    """分析用戶情緒，返回對應的人格類型（節省API配額版）"""
     
-    # 優先使用關鍵詞規則確保一致性（強制執行）
+    # 完全基於關鍵詞判斷，不使用API
     message_lower = message.lower()
     
-    # Wisdom模式關鍵詞（哲學、人生智慧類）- 強制優先級最高
+    # Wisdom模式關鍵詞（哲學、人生智慧類）
     wisdom_keywords = [
         '直覺', '內心聲音', '生活感悟', '人生哲理', '生活哲學', 
         '人生意義', '價值觀', '自我認知', '內在智慧', '人生道理',
-        '處世', '人生選擇', '生命意義', '存在', '本質', '真實自我'
+        '處世', '人生選擇', '生命意義', '存在', '本質', '真實自我',
+        '意思', '意義', '道理', '哲學', '思考'
     ]
     
-    # 強制檢查：只要包含wisdom關鍵詞就直接返回
     for keyword in wisdom_keywords:
         if keyword in message_lower:
-            print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> 強制wisdom模式")
+            print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> wisdom模式")
             return 'wisdom'
     
     # Soul模式關鍵詞（心理探索、情感成長）
@@ -120,46 +120,42 @@ def analyze_emotion(message):
         '童年', '原生家庭', '關係模式', '個人成長', '自我療癒'
     ]
     
-    if any(keyword in message_lower for keyword in soul_keywords):
-        return 'soul'
+    for keyword in soul_keywords:
+        if keyword in message_lower:
+            print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> soul模式")
+            return 'soul'
     
-    # 擴充更多關鍵詞判斷
-    healing_keywords = ['難過', '傷心', '痛苦', '壓力', '焦慮', '累', '辛苦', '沮喪', '失望', '挫折']
-    if any(keyword in message_lower for keyword in healing_keywords):
-        return 'healing'
+    # Healing模式關鍵詞
+    healing_keywords = ['難過', '傷心', '痛苦', '壓力', '焦慮', '累', '辛苦', '沮喪', '失望', '挫折', '煩', '糟']
+    for keyword in healing_keywords:
+        if keyword in message_lower:
+            print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> healing模式")
+            return 'healing'
     
-    funny_keywords = ['哈哈', '好笑', '開心', '好玩', '有趣', '搞笑', '逗', '樂']
-    if any(keyword in message_lower for keyword in funny_keywords):
-        return 'funny'
+    # Funny模式關鍵詞
+    funny_keywords = ['哈哈', '好笑', '開心', '好玩', '有趣', '搞笑', '逗', '樂', '嘻嘻', '哈', '笑']
+    for keyword in funny_keywords:
+        if keyword in message_lower:
+            print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> funny模式")
+            return 'funny'
     
-    knowledge_keywords = ['怎麼', '如何', '方法', '教', '學', '問題', '解決', '建議']
-    if any(keyword in message_lower for keyword in knowledge_keywords):
-        return 'knowledge'
+    # Knowledge模式關鍵詞
+    knowledge_keywords = ['怎麼', '如何', '方法', '教', '學', '問題', '解決', '建議', '為什麼', '什麼是', '請問']
+    for keyword in knowledge_keywords:
+        if keyword in message_lower:
+            print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> knowledge模式")
+            return 'knowledge'
     
-    # 使用AI分析作為輔助
-    try:
-        emotion_prompt = f"""分析以下用戶訊息的情緒狀態，返回最適合的人格類型（只回答一個詞）：
-
-用戶訊息：{message}
-
-選項：
-- healing（用戶情緒低落、難過、焦慮、壓力大、需要安慰、受挫）
-- funny（用戶想要輕鬆、開心、娛樂、想聊有趣的事、心情愉快）
-- knowledge（用戶問具體技術問題、操作方法、學習建議、實用技巧）
-- friend（用戶日常分享、聊天、想找共鳴、分享生活瑣事）
-- soul（用戶談論心理、情感、依附、內心探索、人生反思、深度話題、童年、關係模式、個人成長）
-- wisdom（用戶遇到人生選擇、處世困惑、哲學思考、需要智慧指引、生活哲理、成長迷茫、直覺判斷、內心聲音、生活感悟）
-
-只回答：healing/funny/knowledge/friend/soul/wisdom"""
-
-        response = model.generate_content(emotion_prompt)
-        emotion = response.text.strip().lower()
-        
-        # 確保返回有效的人格類型
-        valid_emotions = ['healing', 'funny', 'knowledge', 'friend', 'soul', 'wisdom']
-        return emotion if emotion in valid_emotions else 'friend'
-    except:
-        return 'friend'  # 默認為閨蜜模式
+    # 問候語判斷
+    greetings = ['嗨', '你好', 'hi', 'hello', '哈囉', '早安', '晚安', '午安']
+    for greeting in greetings:
+        if greeting in message_lower:
+            print(f"🎯 關鍵詞檢測: 找到'{greeting}' -> friend模式")
+            return 'friend'
+    
+    # 默認為friend模式（節省API）
+    print("🎯 使用預設 -> friend模式")
+    return 'friend'
 
 def get_persona_prompt(persona_type):
     """根據人格類型返回對應的提示詞"""
