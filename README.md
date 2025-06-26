@@ -1,12 +1,12 @@
-# LINE Bot AI 美業助理
+# Lumi 露米 - LINE Bot AI 夥伴
 
-這是一個專為美業工作者設計的 LINE Bot AI 助理，使用 Google Gemini AI 提供智慧對話功能。
+Lumi 是一個擁有五重人格的療癒系 AI 夥伴，使用 Google Gemini AI 提供溫暖陪伴和情感支持。
 
 ## 功能特色
-- 智慧對話：使用 Google Gemini AI 回應客人問題
-- 美業專精：針對接睫毛、美容保養等領域優化
-- LINE 整合：直接在 LINE 上與客人互動
-- 低成本運行：使用 Google App Engine 免費額度
+- 🌸 五重人格：療癒、搞笑、知性、閨蜜、靈魂筆記模式
+- 💬 智慧對話：使用 Google Gemini AI 自然回應
+- 📱 LINE 整合：直接在 LINE 上與 Lumi 互動
+- ☁️ 雲端部署：使用 Heroku 免費託管
 
 ## 設定步驟
 
@@ -40,24 +40,33 @@ pip install -r requirements.txt
 python main.py
 ```
 
-### 5. 部署到 Google App Engine
-```bash
-gcloud app deploy
-```
+### 5. 部署到 Heroku
+1. 註冊 [Heroku](https://heroku.com) 帳號
+2. 建立新的 Heroku app
+3. 連接 GitHub repository
+4. 設定環境變數（Config Vars）
+5. 點擊 Deploy
 
 ### 6. 設定 LINE Webhook
 在 LINE Developers Console 中設定 Webhook URL：
 ```
-https://你的專案名稱.uc.r.appspot.com/webhook
+https://你的app名稱.herokuapp.com/webhook
 ```
 
 ## 使用方式
-1. 將你的 LINE Bot 加為好友
-2. 傳送訊息給 Bot
-3. Bot 會使用 AI 智慧回應
+1. 將 Lumi 加為 LINE 好友
+2. 傳送訊息給 Lumi
+3. Lumi 會根據你的情緒自動切換最適合的人格模式回應
+
+## Lumi 的五重人格
+- 🌸 **療癒模式**：當你情緒低落時，給予溫暖安慰
+- 🤣 **搞笑模式**：當你想要輕鬆時，帶來歡樂笑聲
+- 🧠 **知性模式**：當你有問題時，提供理性分析
+- 💌 **閨蜜模式**：當你需要陪伴時，像好朋友般聊天
+- ✨ **靈魂筆記模式**：當你想反思時，引導內心探索
 
 ## 成本說明
-- Google App Engine：免費額度每月足夠小型使用
+- Heroku：免費方案足夠個人使用
 - Gemini API：免費額度每月 60 次請求/分鐘
 - LINE Messaging API：免費額度每月 1000 則訊息
 
