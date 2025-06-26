@@ -123,6 +123,19 @@ def analyze_emotion(message):
     if any(keyword in message_lower for keyword in soul_keywords):
         return 'soul'
     
+    # 擴充更多關鍵詞判斷
+    healing_keywords = ['難過', '傷心', '痛苦', '壓力', '焦慮', '累', '辛苦', '沮喪', '失望', '挫折']
+    if any(keyword in message_lower for keyword in healing_keywords):
+        return 'healing'
+    
+    funny_keywords = ['哈哈', '好笑', '開心', '好玩', '有趣', '搞笑', '逗', '樂']
+    if any(keyword in message_lower for keyword in funny_keywords):
+        return 'funny'
+    
+    knowledge_keywords = ['怎麼', '如何', '方法', '教', '學', '問題', '解決', '建議']
+    if any(keyword in message_lower for keyword in knowledge_keywords):
+        return 'knowledge'
+    
     # 使用AI分析作為輔助
     try:
         emotion_prompt = f"""分析以下用戶訊息的情緒狀態，返回最適合的人格類型（只回答一個詞）：
@@ -245,29 +258,48 @@ def get_lumi_response(message, user_id):
         # 1. 分析用戶情緒，選擇人格
         persona_type = analyze_emotion(message)
         
-        # 2. 檢索相關記憶（如果有記憶系統）
+        # 2. 檢索相關記憶和上下文（強化版）
         memory_context = ""
+        recent_context = ""
         if memory_manager:
             try:
+                # 取得相關情緒記憶
                 memory_context = memory_manager.get_context_for_response(
                     user_id=user_id,
                     current_message=message,
                     emotion_tag=persona_type
                 )
+                
+                # 取得最近3句對話作為上下文
+                recent_memories = memory_manager.get_recent_memories(user_id, 3)
+                if recent_memories:
+                    recent_context = "最近對話：\\n"
+                    for mem in recent_memories[-2:]:  # 只用最近2句
+                        recent_context += f"用戶：{mem['user_message'][:30]}...\\n"
+                        recent_context += f"露米：{mem['lumi_response'][:30]}...\\n"
+                
             except Exception as e:
                 print(f"記憶檢索錯誤: {e}")
         
         # 3. 獲取對應人格的提示詞
         persona_prompt = get_persona_prompt(persona_type)
         
-        # 4. 生成回應
-        full_context = f"{persona_prompt}\n\n{memory_context}" if memory_context else persona_prompt
+        # 4. 生成回應（整合所有上下文）
+        all_context = persona_prompt
+        if recent_context:
+            all_context += f"\n\n{recent_context}"
+        if memory_context:
+            all_context += f"\n\n{memory_context}"
         
-        prompt = f"""{full_context}
+        prompt = f"""{all_context}
 
 用戶說：{message}
 
-請以露米的身份，用{persona_type}人格特色自然回應。如果有相關記憶，可以自然地提及之前的對話內容。"""
+請以露米的身份，用{persona_type}人格特色自然回應。注意：
+1. 參考最近對話延續話題
+2. 用適合的情緒人格回應
+3. 自然提及相關記憶
+4. 保持對話連貫性"""
 
         response = model.generate_content(prompt)
         return response.text.strip()
@@ -379,31 +411,52 @@ def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
     
-    # 取得人格類型以便存儲記憶
-    persona_type = analyze_emotion(user_message)
-    lumi_response = get_lumi_response(user_message, user_id)
-    
-    # 儲存對話記錄到記憶體（備用）
-    store_conversation(user_id, user_message, lumi_response)
-    
-    # 儲存到量子記憶系統
-    if memory_manager:
-        try:
-            memory_manager.store_conversation_memory(
-                user_id=user_id,
-                user_message=user_message,
-                lumi_response=lumi_response,
-                emotion_tag=persona_type
-            )
-        except Exception as e:
-            print(f"記憶系統存儲錯誤: {e}")
+    try:
+        print(f"🔄 處理用戶 {user_id[:8]}... 的訊息: {user_message[:30]}...")
+        
+        # 取得人格類型以便存儲記憶
+        persona_type = analyze_emotion(user_message)
+        print(f"🎭 偵測人格類型: {persona_type}")
+        
+        lumi_response = get_lumi_response(user_message, user_id)
+        print(f"✅ 生成回應完成")
+        
+        # 儲存對話記錄到記憶體（備用）
+        store_conversation(user_id, user_message, lumi_response)
+        
+        # 儲存到量子記憶系統（異步，不阻塞主流程）
+        if memory_manager:
+            try:
+                memory_manager.store_conversation_memory(
+                    user_id=user_id,
+                    user_message=user_message,
+                    lumi_response=lumi_response,
+                    emotion_tag=persona_type
+                )
+            except Exception as e:
+                print(f"記憶系統存儲錯誤: {e}")
 
-    line_bot_api.reply_message(
-        ReplyMessageRequest(
-            reply_token=event.reply_token,
-            messages=[TextMessage(text=lumi_response)]
+        # 發送回應
+        line_bot_api.reply_message(
+            ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[TextMessage(text=lumi_response)]
+            )
         )
-    )
+        print(f"📤 回應已送出給用戶 {user_id[:8]}...")
+        
+    except Exception as e:
+        print(f"❌ 處理訊息時發生錯誤: {e}")
+        # 發送錯誤回應
+        try:
+            line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text="抱歉，我剛剛恍神了一下，可以再說一次嗎？")]
+                )
+            )
+        except:
+            pass
 
 @app.route("/")
 def index():
