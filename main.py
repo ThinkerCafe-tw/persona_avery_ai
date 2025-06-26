@@ -11,6 +11,7 @@ from linebot.v3.messaging import (
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from datetime import datetime
 import json
+from simple_memory import SimpleLumiMemory
 
 load_dotenv()
 app = Flask(__name__)
@@ -23,7 +24,15 @@ handler = WebhookHandler(os.getenv('LINE_CHANNEL_SECRET'))
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 model = genai.GenerativeModel('gemini-2.0-flash-exp')
 
-# 用戶對話記憶存儲 (簡單的記憶體存儲，生產環境應使用數據庫)
+# 初始化簡化記憶系統
+try:
+    memory_manager = SimpleLumiMemory()
+    print("🧠 簡化記憶系統已啟動")
+except Exception as e:
+    print(f"記憶系統初始化失敗: {e}")
+    memory_manager = None
+
+# 用戶對話記憶存儲 (向量資料庫為主，記憶體為備用)
 user_conversations = {}
 
 def store_conversation(user_id, message, response):
@@ -194,25 +203,78 @@ def get_lumi_response(message, user_id):
     if any(keyword in message for keyword in summary_keywords):
         return generate_daily_summary(user_id)
     
+    # 檢查是否為記憶相關指令
+    memory_keywords = ['記憶摘要', '我的記憶', '我們聊過什麼', '你還記得嗎', '之前的對話']
+    if any(keyword in message for keyword in memory_keywords):
+        return get_memory_summary_response(user_id)
+    
     try:
         # 1. 分析用戶情緒，選擇人格
         persona_type = analyze_emotion(message)
         
-        # 2. 獲取對應人格的提示詞
+        # 2. 檢索相關記憶（如果有記憶系統）
+        memory_context = ""
+        if memory_manager:
+            try:
+                memory_context = memory_manager.get_context_for_response(
+                    user_id=user_id,
+                    current_message=message,
+                    emotion_tag=persona_type
+                )
+            except Exception as e:
+                print(f"記憶檢索錯誤: {e}")
+        
+        # 3. 獲取對應人格的提示詞
         persona_prompt = get_persona_prompt(persona_type)
         
-        # 3. 生成回應
-        prompt = f"""{persona_prompt}
+        # 4. 生成回應
+        full_context = f"{persona_prompt}\n\n{memory_context}" if memory_context else persona_prompt
+        
+        prompt = f"""{full_context}
 
 用戶說：{message}
 
-請以露米的身份，用{persona_type}人格特色自然回應。"""
+請以露米的身份，用{persona_type}人格特色自然回應。如果有相關記憶，可以自然地提及之前的對話內容。"""
 
         response = model.generate_content(prompt)
         return response.text.strip()
     except Exception as e:
         print(f"錯誤: {e}")
         return "嗨！我是露米，不好意思剛剛恍神了一下，可以再說一次嗎？"
+
+def get_memory_summary_response(user_id):
+    """取得用戶記憶摘要回應"""
+    if not memory_manager:
+        return "欸～我的記憶系統還在升級中，不過我們的對話我都有記在心裡啦！"
+    
+    try:
+        summary = memory_manager.get_memory_summary(user_id)
+        emotion_patterns = memory_manager.get_user_emotion_patterns(user_id)
+        
+        if summary['total_memories'] == 0:
+            return "我們才剛開始認識呢！快跟我多聊聊，讓我更了解你吧 ✨"
+        
+        dominant_emotion = emotion_patterns.get('dominant_emotion', 'friend')
+        emotion_names = {
+            'healing': '需要療癒',
+            'funny': '想要開心', 
+            'knowledge': '求知慾強',
+            'friend': '想要陪伴',
+            'soul': '深度探索',
+            'wisdom': '尋求智慧'
+        }
+        
+        response = f"讓我看看我們的回憶～\n\n"
+        response += f"📊 總共有 {summary['total_memories']} 段記憶\n"
+        response += f"💭 最常的狀態是「{emotion_names.get(dominant_emotion, dominant_emotion)}」\n"
+        response += f"📈 最近 {emotion_patterns.get('total_interactions', 0)} 次互動\n\n"
+        response += f"感覺我們越來越熟了呢！你最想聊什麼類型的話題？"
+        
+        return response
+        
+    except Exception as e:
+        print(f"記憶摘要錯誤: {e}")
+        return "記憶有點模糊，但我記得我們聊過很多有趣的事情！"
 
 @app.route("/webhook", methods=['POST'])
 def webhook():
@@ -230,10 +292,25 @@ def webhook():
 def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
+    
+    # 取得人格類型以便存儲記憶
+    persona_type = analyze_emotion(user_message)
     lumi_response = get_lumi_response(user_message, user_id)
     
-    # 儲存對話記錄
+    # 儲存對話記錄到記憶體（備用）
     store_conversation(user_id, user_message, lumi_response)
+    
+    # 儲存到量子記憶系統
+    if memory_manager:
+        try:
+            memory_manager.store_conversation_memory(
+                user_id=user_id,
+                user_message=user_message,
+                lumi_response=lumi_response,
+                emotion_tag=persona_type
+            )
+        except Exception as e:
+            print(f"記憶系統存儲錯誤: {e}")
 
     line_bot_api.reply_message(
         ReplyMessageRequest(
