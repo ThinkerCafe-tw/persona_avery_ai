@@ -97,6 +97,30 @@ def generate_daily_summary(user_id):
 
 def analyze_emotion(message):
     """分析用戶情緒，返回對應的人格類型"""
+    
+    # 優先使用關鍵詞規則確保一致性
+    message_lower = message.lower()
+    
+    # Wisdom模式關鍵詞（哲學、人生智慧類）
+    wisdom_keywords = [
+        '直覺', '內心聲音', '生活感悟', '人生哲理', '生活哲學', 
+        '人生意義', '價值觀', '自我認知', '內在智慧', '人生道理',
+        '處世', '人生選擇', '生命意義', '存在', '本質', '真實自我'
+    ]
+    
+    if any(keyword in message_lower for keyword in wisdom_keywords):
+        return 'wisdom'
+    
+    # Soul模式關鍵詞（心理探索、情感成長）
+    soul_keywords = [
+        '心理', '情感', '依附', '內心探索', '心情', '感受',
+        '童年', '原生家庭', '關係模式', '個人成長', '自我療癒'
+    ]
+    
+    if any(keyword in message_lower for keyword in soul_keywords):
+        return 'soul'
+    
+    # 使用AI分析作為輔助
     try:
         emotion_prompt = f"""分析以下用戶訊息的情緒狀態，返回最適合的人格類型（只回答一個詞）：
 
