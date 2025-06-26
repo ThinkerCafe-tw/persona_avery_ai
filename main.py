@@ -22,7 +22,7 @@ line_bot_api = MessagingApi(ApiClient(Configuration(
 handler = WebhookHandler(os.getenv('LINE_CHANNEL_SECRET'))
 
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-model = genai.GenerativeModel('gemini-2.0-flash-exp')
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 # 初始化簡化記憶系統
 try:
