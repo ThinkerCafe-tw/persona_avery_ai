@@ -2,6 +2,8 @@ import os
 from flask import Flask, request, abort
 from dotenv import load_dotenv
 import google.generativeai as genai
+from google.cloud import aiplatform
+from vertexai.preview.generative_models import GenerativeModel as VertexModel
 from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import (
@@ -21,8 +23,32 @@ line_bot_api = MessagingApi(ApiClient(Configuration(
 )))
 handler = WebhookHandler(os.getenv('LINE_CHANNEL_SECRET'))
 
-genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-model = genai.GenerativeModel('gemini-1.5-flash')
+# 設定Vertex AI (企業級)
+try:
+    # 檢查是否有Vertex AI環境變數
+    vertex_project = os.getenv('VERTEX_AI_PROJECT_ID')
+    vertex_location = os.getenv('VERTEX_AI_LOCATION', 'us-central1')
+    
+    if vertex_project:
+        # 初始化Vertex AI
+        aiplatform.init(
+            project=vertex_project,
+            location=vertex_location
+        )
+        
+        # 使用企業級Vertex AI模型
+        model = VertexModel('gemini-1.5-flash')
+        print(f"✅ 企業級Vertex AI已初始化 (Project: {vertex_project})")
+        USE_VERTEX_AI = True
+    else:
+        raise Exception("Vertex AI環境變數未設置")
+    
+except Exception as e:
+    print(f"⚠️ Vertex AI初始化失敗，使用備用API: {e}")
+    # 備用方案：使用原有的API
+    genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    USE_VERTEX_AI = False
 
 # 初始化簡化記憶系統
 try:
@@ -297,6 +323,7 @@ def get_lumi_response(message, user_id):
 3. 自然提及相關記憶
 4. 保持對話連貫性"""
 
+        # 使用企業級Vertex AI或備用API
         response = model.generate_content(prompt)
         return response.text.strip()
     except Exception as e:
