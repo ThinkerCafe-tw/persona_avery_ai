@@ -3,6 +3,7 @@ import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import hashlib
+from github_sync import GitHubMemorySync
 
 class SimpleLumiMemory:
     """簡化版Lumi記憶系統 - 使用JSON文件存儲"""
@@ -11,6 +12,14 @@ class SimpleLumiMemory:
         # 記憶存儲文件路徑
         self.memory_file = '/tmp/lumi_memories.json'
         self.memories = self._load_memories()
+        
+        # 初始化GitHub同步
+        try:
+            self.github_sync = GitHubMemorySync()
+            print("🔄 GitHub記憶同步已初始化")
+        except Exception as e:
+            print(f"GitHub同步初始化失敗: {e}")
+            self.github_sync = None
     
     def _load_memories(self) -> Dict:
         """載入記憶文件"""
@@ -59,6 +68,15 @@ class SimpleLumiMemory:
             self.memories[user_id] = self.memories[user_id][-100:]
         
         self._save_memories()
+        
+        # 同步到GitHub（異步，不影響主流程）
+        if self.github_sync:
+            try:
+                user_memories = self.memories.get(user_id, [])
+                self.github_sync.sync_user_memory(user_id, user_memories)
+            except Exception as e:
+                print(f"GitHub同步錯誤: {e}")
+        
         return memory_id
     
     def get_recent_memories(self, user_id: str, limit: int = 5) -> List[Dict]:
@@ -167,3 +185,46 @@ class SimpleLumiMemory:
             context += f"- {memory['user_message'][:50]}...\n"
         
         return context
+    
+    def create_daily_backup(self):
+        """創建每日記憶備份"""
+        if self.github_sync:
+            try:
+                success = self.github_sync.create_daily_backup(self.memories)
+                if success:
+                    print("✅ 每日記憶備份已創建")
+                return success
+            except Exception as e:
+                print(f"每日備份錯誤: {e}")
+                return False
+        return False
+    
+    def load_user_memory_from_github(self, user_id: str) -> bool:
+        """從GitHub載入用戶記憶"""
+        if not self.github_sync:
+            return False
+        
+        try:
+            github_memories = self.github_sync.load_user_memory(user_id)
+            if github_memories:
+                self.memories[user_id] = github_memories
+                self._save_memories()
+                print(f"✅ 從GitHub恢復用戶 {user_id[:8]}... 記憶")
+                return True
+            return False
+        except Exception as e:
+            print(f"從GitHub載入記憶錯誤: {e}")
+            return False
+    
+    def get_sync_status(self) -> Dict:
+        """取得同步狀態"""
+        if self.github_sync:
+            return self.github_sync.get_sync_status()
+        else:
+            return {
+                'github_token_configured': False,
+                'repo_accessible': False,
+                'branch_exists': False,
+                'last_sync': None,
+                'error': 'GitHub同步未初始化'
+            }
