@@ -21,7 +21,7 @@ line_bot_api = MessagingApi(ApiClient(Configuration(
 handler = WebhookHandler(os.getenv('LINE_CHANNEL_SECRET'))
 
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-2.0-flash-exp')
 
 # 用戶對話記憶存儲 (簡單的記憶體存儲，生產環境應使用數據庫)
 user_conversations = {}
