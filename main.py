@@ -57,13 +57,20 @@ try:
             # 先嘗試解析 JSON 確保格式正確
             credentials_dict = json.loads(cleaned_json)
             
-            # 清理 private_key 中的轉義字符
+            # 清理 private_key 中的轉義字符和格式問題
             if 'private_key' in credentials_dict:
                 private_key = credentials_dict['private_key']
                 # 處理可能的雙重轉義
                 private_key = private_key.replace('\\\\n', '\\n')
                 # 確保正確的換行符
                 private_key = private_key.replace('\\n', '\n')
+                
+                # 修復可能的格式問題
+                private_key = private_key.replace('-----BEGIN PRIVATE   KEY-----', '-----BEGIN PRIVATE KEY-----')
+                private_key = private_key.replace('-----END PRIVATE   KEY-----', '-----END PRIVATE KEY-----')
+                # 移除其他可能的多餘空格
+                private_key = private_key.replace('PRIVATE   KEY', 'PRIVATE KEY')
+                
                 credentials_dict['private_key'] = private_key
             
             # 重新序列化為乾淨的 JSON
