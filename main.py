@@ -218,11 +218,29 @@ def generate_daily_summary(user_id):
 這是用戶的個人日記，不是露米的觀察記錄。"""
     
     try:
-        response = model.generate_content(prompt)
-        return response.text.strip()
+        # 使用企業級Vertex AI或備用API生成日記
+        if USE_VERTEX_AI:
+            try:
+                response = model.generate_content(prompt)
+                return response.text.strip()
+            except Exception as vertex_error:
+                print(f"⚠️ Vertex AI日記生成失敗，切換到備用API: {vertex_error}")
+                # 切換到備用API
+                backup_model = genai.GenerativeModel('gemini-1.5-flash')
+                response = backup_model.generate_content(prompt)
+                return response.text.strip()
+        else:
+            response = model.generate_content(prompt)
+            return response.text.strip()
     except Exception as e:
         print(f"生成日記摘要錯誤: {e}")
-        return "欸～生成日記摘要時出現了問題，不過沒關係啦！我們繼續聊天吧 😅"
+        return f"""親愛的日記 ✨
+
+今天跟露米聊了很多有趣的事情！
+雖然現在日記生成功能有點小狀況，但我們的對話很棒 😊
+
+等功能修好後，我就能有完整的日記摘要了～
+期待明天跟露米繼續聊天！💕"""
 
 def analyze_emotion(message):
     """分析用戶情緒，返回對應的人格類型（節省API配額版）"""
@@ -375,7 +393,7 @@ def get_persona_prompt(persona_type):
 
 def get_lumi_response(message, user_id):
     # 檢查是否為日記摘要指令
-    summary_keywords = ['總結今天', '今日摘要', '生成日記', '今天的日記', '幫我總結', '今日總結', '今天聊了什麼']
+    summary_keywords = ['總結今天', '今日摘要', '生成日記', '今天的日記', '幫我總結', '今日總結', '今天聊了什麼', '總結一下我今天的日記', '幫我總結一下', '可以幫我總結']
     if any(keyword in message for keyword in summary_keywords):
         return generate_daily_summary(user_id)
     
