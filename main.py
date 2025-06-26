@@ -40,11 +40,35 @@ try:
         import json
         import tempfile
         
-        # 將JSON字串寫入暫存檔案
+        # 嘗試解析和清理 JSON
+        try:
+            # 先嘗試解析 JSON 確保格式正確
+            credentials_dict = json.loads(vertex_credentials)
+            
+            # 清理 private_key 中的轉義字符
+            if 'private_key' in credentials_dict:
+                private_key = credentials_dict['private_key']
+                # 處理可能的雙重轉義
+                private_key = private_key.replace('\\\\n', '\\n')
+                # 確保正確的換行符
+                private_key = private_key.replace('\\n', '\n')
+                credentials_dict['private_key'] = private_key
+            
+            # 重新序列化為乾淨的 JSON
+            clean_credentials = json.dumps(credentials_dict, indent=2)
+            
+            print(f"🔑 Private Key 預覽: {credentials_dict.get('private_key', 'N/A')[:50]}...")
+            
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON 解析失敗: {e}")
+            raise Exception(f"無效的 JSON 格式: {e}")
+        
+        # 將清理後的JSON寫入暫存檔案
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-            f.write(vertex_credentials)
+            f.write(clean_credentials)
             credentials_path = f.name
         
+        print(f"📄 認證檔案已創建: {credentials_path}")
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
         
         # 初始化Vertex AI
