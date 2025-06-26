@@ -2,7 +2,7 @@ import os
 from flask import Flask, request, abort
 from dotenv import load_dotenv
 import google.generativeai as genai
-from google.cloud import aiplatform
+import vertexai
 from vertexai.preview.generative_models import GenerativeModel as VertexModel
 from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
@@ -48,7 +48,7 @@ try:
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
         
         # 初始化Vertex AI
-        aiplatform.init(
+        vertexai.init(
             project=vertex_project,
             location=vertex_location
         )
