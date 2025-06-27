@@ -256,25 +256,33 @@ def analyze_emotion(message, user_id=None):
     previous_emotion = current_state.get('emotion', None)
     last_update = current_state.get('timestamp', 0)
     
-    # 如果在5分鐘內處於healing/soul模式，且當前訊息不是明確的其他意圖，維持原狀態
-    if previous_emotion in ['healing', 'soul']:
+    # 如果在5分鐘內處於healing/soul/wisdom模式，且當前訊息不是明確的其他意圖，維持原狀態
+    if previous_emotion in ['healing', 'soul', 'wisdom']:
         time_diff = datetime.now().timestamp() - last_update
         if time_diff < 300:  # 5分鐘內
             # 檢查是否為明確的模式切換訊息
             clear_mode_switch_keywords = [
-                '哈哈哈', '太好笑', '開心', '好玩', '搞笑', '逗我笑',  # 明確funny
-                '怎麼做', '請教', '教我', '什麼是', '如何',  # 明確knowledge
-                '哲學', '人生道理', '生命意義', '智慧'  # 明確wisdom
+                '哈哈哈', '太好笑', '超好笑', '笑死', '搞笑', '逗我笑',  # 明確funny
+                '怎麼做', '請教', '教我', '什麼是', '如何', '方法',  # 明確knowledge
             ]
             
             is_clear_switch = any(keyword in message_lower for keyword in clear_mode_switch_keywords)
             
-            # 如果不是明確切換，且包含情緒延續詞彙，維持healing模式
-            emotion_continuation_keywords = ['快樂', '開心', '好起來', '恢復', '走出來', '重新', '希望', '想要', '但是', '可是', '然後']
-            has_emotion_continuation = any(keyword in message_lower for keyword in emotion_continuation_keywords)
+            # 深度對話延續關鍵詞 - 應該維持深度模式
+            deep_continuation_keywords = [
+                '想要', '希望', '渴望', '期待', '感受', '覺得', '認為', 
+                '美麗', '綻放', '成長', '變化', '蛻變', '內心', '心靈',
+                '快樂', '開心', '好起來', '恢復', '走出來', '重新', 
+                '但是', '可是', '然後', '所以', '因為', '我想'
+            ]
+            has_deep_continuation = any(keyword in message_lower for keyword in deep_continuation_keywords)
             
-            if not is_clear_switch and has_emotion_continuation:
-                print(f"🔄 情緒延續檢測: 維持 {previous_emotion} 模式 (訊息包含情緒延續)")
+            # 詩意表達檢測 - 維持深度模式
+            poetic_expressions = ['像', '如同', '彷彿', '宛如', '好比', '就像']
+            has_poetic_expression = any(keyword in message_lower for keyword in poetic_expressions)
+            
+            if not is_clear_switch and (has_deep_continuation or has_poetic_expression):
+                print(f"🔄 深度對話延續檢測: 維持 {previous_emotion} 模式 (包含深度/詩意表達)")
                 # 更新時間戳
                 user_emotion_states[user_id] = {
                     'emotion': previous_emotion,
