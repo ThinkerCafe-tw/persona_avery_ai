@@ -164,6 +164,9 @@ except Exception as e:
 # 用戶對話記憶存儲 (向量資料庫為主，記憶體為備用)
 user_conversations = {}
 
+# 用戶情緒狀態追踪（防止不當模式跳轉）
+user_emotion_states = {}
+
 def store_conversation(user_id, message, response):
     """儲存用戶對話記錄"""
     today = datetime.now().strftime('%Y-%m-%d')
@@ -242,11 +245,42 @@ def generate_daily_summary(user_id):
 等功能修好後，我就能有完整的日記摘要了～
 期待明天跟露米繼續聊天！💕"""
 
-def analyze_emotion(message):
-    """分析用戶情緒，返回對應的人格類型（節省API配額版）"""
+def analyze_emotion(message, user_id=None):
+    """分析用戶情緒，返回對應的人格類型（帶情緒狀態追踪）"""
     
     # 完全基於關鍵詞判斷，不使用API
     message_lower = message.lower()
+    
+    # 檢查當前用戶的情緒狀態
+    current_state = user_emotion_states.get(user_id, {})
+    previous_emotion = current_state.get('emotion', None)
+    last_update = current_state.get('timestamp', 0)
+    
+    # 如果在5分鐘內處於healing/soul模式，且當前訊息不是明確的其他意圖，維持原狀態
+    if previous_emotion in ['healing', 'soul']:
+        time_diff = datetime.now().timestamp() - last_update
+        if time_diff < 300:  # 5分鐘內
+            # 檢查是否為明確的模式切換訊息
+            clear_mode_switch_keywords = [
+                '哈哈哈', '太好笑', '開心', '好玩', '搞笑', '逗我笑',  # 明確funny
+                '怎麼做', '請教', '教我', '什麼是', '如何',  # 明確knowledge
+                '哲學', '人生道理', '生命意義', '智慧'  # 明確wisdom
+            ]
+            
+            is_clear_switch = any(keyword in message_lower for keyword in clear_mode_switch_keywords)
+            
+            # 如果不是明確切換，且包含情緒延續詞彙，維持healing模式
+            emotion_continuation_keywords = ['快樂', '開心', '好起來', '恢復', '走出來', '重新', '希望', '想要', '但是', '可是', '然後']
+            has_emotion_continuation = any(keyword in message_lower for keyword in emotion_continuation_keywords)
+            
+            if not is_clear_switch and has_emotion_continuation:
+                print(f"🔄 情緒延續檢測: 維持 {previous_emotion} 模式 (訊息包含情緒延續)")
+                # 更新時間戳
+                user_emotion_states[user_id] = {
+                    'emotion': previous_emotion,
+                    'timestamp': datetime.now().timestamp()
+                }
+                return previous_emotion
     
     # Wisdom模式關鍵詞（哲學、人生智慧類）
     wisdom_keywords = [
@@ -259,50 +293,65 @@ def analyze_emotion(message):
     for keyword in wisdom_keywords:
         if keyword in message_lower:
             print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> wisdom模式")
-            return 'wisdom'
+            emotion = 'wisdom'
+            break
+    else:
+        # Soul模式關鍵詞（心理探索、情感成長）
+        soul_keywords = [
+            '心理', '情感', '依附', '內心探索', '心情', '感受',
+            '童年', '原生家庭', '關係模式', '個人成長', '自我療癒'
+        ]
+        
+        for keyword in soul_keywords:
+            if keyword in message_lower:
+                print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> soul模式")
+                emotion = 'soul'
+                break
+        else:
+            # Healing模式關鍵詞
+            healing_keywords = ['難過', '傷心', '痛苦', '壓力', '焦慮', '累', '辛苦', '沮喪', '失望', '挫折', '煩', '糟', '失敗', '不行', '沒用', '爛', '討厭自己', '自責', '崩潰', '受傷', '委屈']
+            for keyword in healing_keywords:
+                if keyword in message_lower:
+                    print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> healing模式")
+                    emotion = 'healing'
+                    break
+            else:
+                # Funny模式關鍵詞 - 只有明確的搞笑意圖才觸發
+                funny_keywords = ['哈哈哈', '好笑', '搞笑', '逗', '嘻嘻', '太好笑', '笑死']
+                for keyword in funny_keywords:
+                    if keyword in message_lower:
+                        print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> funny模式")
+                        emotion = 'funny'
+                        break
+                else:
+                    # Knowledge模式關鍵詞
+                    knowledge_keywords = ['怎麼', '如何', '方法', '教', '學', '問題', '解決', '建議', '為什麼', '什麼是', '請問']
+                    for keyword in knowledge_keywords:
+                        if keyword in message_lower:
+                            print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> knowledge模式")
+                            emotion = 'knowledge'
+                            break
+                    else:
+                        # 問候語判斷
+                        greetings = ['嗨', '你好', 'hi', 'hello', '哈囉', '早安', '晚安', '午安']
+                        for greeting in greetings:
+                            if greeting in message_lower:
+                                print(f"🎯 關鍵詞檢測: 找到'{greeting}' -> friend模式")
+                                emotion = 'friend'
+                                break
+                        else:
+                            # 默認為friend模式（節省API）
+                            print("🎯 使用預設 -> friend模式")
+                            emotion = 'friend'
     
-    # Soul模式關鍵詞（心理探索、情感成長）
-    soul_keywords = [
-        '心理', '情感', '依附', '內心探索', '心情', '感受',
-        '童年', '原生家庭', '關係模式', '個人成長', '自我療癒'
-    ]
+    # 更新用戶情緒狀態
+    if user_id:
+        user_emotion_states[user_id] = {
+            'emotion': emotion,
+            'timestamp': datetime.now().timestamp()
+        }
     
-    for keyword in soul_keywords:
-        if keyword in message_lower:
-            print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> soul模式")
-            return 'soul'
-    
-    # Healing模式關鍵詞
-    healing_keywords = ['難過', '傷心', '痛苦', '壓力', '焦慮', '累', '辛苦', '沮喪', '失望', '挫折', '煩', '糟', '失敗', '不行', '沒用', '爛', '討厭自己', '自責', '崩潰', '受傷', '委屈']
-    for keyword in healing_keywords:
-        if keyword in message_lower:
-            print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> healing模式")
-            return 'healing'
-    
-    # Funny模式關鍵詞
-    funny_keywords = ['哈哈', '好笑', '開心', '好玩', '有趣', '搞笑', '逗', '樂', '嘻嘻', '哈', '笑']
-    for keyword in funny_keywords:
-        if keyword in message_lower:
-            print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> funny模式")
-            return 'funny'
-    
-    # Knowledge模式關鍵詞
-    knowledge_keywords = ['怎麼', '如何', '方法', '教', '學', '問題', '解決', '建議', '為什麼', '什麼是', '請問']
-    for keyword in knowledge_keywords:
-        if keyword in message_lower:
-            print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> knowledge模式")
-            return 'knowledge'
-    
-    # 問候語判斷
-    greetings = ['嗨', '你好', 'hi', 'hello', '哈囉', '早安', '晚安', '午安']
-    for greeting in greetings:
-        if greeting in message_lower:
-            print(f"🎯 關鍵詞檢測: 找到'{greeting}' -> friend模式")
-            return 'friend'
-    
-    # 默認為friend模式（節省API）
-    print("🎯 使用預設 -> friend模式")
-    return 'friend'
+    return emotion
 
 def get_persona_prompt(persona_type):
     """根據人格類型返回對應的提示詞"""
@@ -417,21 +466,46 @@ def get_lumi_response(message, user_id):
         return get_sync_status_response(user_id)
     
     try:
-        # 1. 分析用戶情緒，選擇人格
-        persona_type = analyze_emotion(message)
+        # 1. 分析用戶情緒，選擇人格（帶情緒狀態追踪）
+        persona_type = analyze_emotion(message, user_id)
         
-        # 2. 暫時停用記憶上下文（防止假記憶生成）
+        # 2. 使用記憶上下文（已加入防假記憶保護）
         memory_context = ""
         recent_context = ""
-        print("🚨 記憶上下文已暫時停用，防止假記憶生成")
         
-        # 原記憶系統程式碼已註解，等修復假記憶問題後再啟用
-        # if memory_manager:
-        #     try:
-        #         memory_context = memory_manager.get_context_for_response(...)
-        #         recent_memories = memory_manager.get_recent_memories(...)
-        #     except Exception as e:
-        #         print(f"記憶檢索錯誤: {e}")
+        if memory_manager:
+            try:
+                # 安全地獲取記憶上下文，僅限情緒和對話主題
+                recent_memories = memory_manager.get_recent_memories(user_id, limit=3)
+                if recent_memories:
+                    # 只提取情緒模式和主題，不包含具體事件
+                    emotions_mentioned = []
+                    topics_mentioned = []
+                    
+                    for memory in recent_memories:
+                        if 'emotion_tag' in memory:
+                            emotions_mentioned.append(memory['emotion_tag'])
+                        # 僅提取安全的對話主題關鍵詞
+                        safe_keywords = ['工作', '學習', '心情', '感受', '思考', '困擾', '開心', '壓力']
+                        if any(keyword in memory.get('user_message', '') for keyword in safe_keywords):
+                            for keyword in safe_keywords:
+                                if keyword in memory.get('user_message', ''):
+                                    topics_mentioned.append(keyword)
+                    
+                    if emotions_mentioned or topics_mentioned:
+                        recent_context = f"最近的對話情緒模式: {', '.join(set(emotions_mentioned))}"
+                        if topics_mentioned:
+                            recent_context += f"\n常討論的話題: {', '.join(set(topics_mentioned))}"
+                        
+                        print(f"🧠 安全記憶上下文已載入: {len(recent_memories)} 條記憶")
+                    else:
+                        print("🧠 記憶中無安全上下文可用")
+                else:
+                    print("🧠 無最近記憶")
+                    
+            except Exception as e:
+                print(f"記憶檢索錯誤: {e}")
+                recent_context = ""
         
         # 3. 獲取對應人格的提示詞
         persona_prompt = get_persona_prompt(persona_type)
@@ -443,20 +517,30 @@ def get_lumi_response(message, user_id):
         if memory_context:
             all_context += f"\n\n{memory_context}"
         
+        # 檢查情緒狀態連續性
+        emotion_continuity_note = ""
+        if user_id in user_emotion_states:
+            prev_emotion = user_emotion_states[user_id].get('emotion')
+            if prev_emotion in ['healing', 'soul'] and persona_type == prev_emotion:
+                emotion_continuity_note = f"\n\n💭 **情緒連續性提示**: 用戶之前處於{prev_emotion}狀態，請延續對話的療癒深度，不要突然變輕鬆。"
+        
         prompt = f"""{all_context}
 
 用戶說：{message}
 
-🚨 **重要提醒**：
-- **絕對不要編造任何假的記憶、經歷或故事**
-- **不要說「上次你...」「記得你...」「之前我們...」等假的回憶**
-- **如果沒有真實記憶，就直接回應當下的問題**
+🚨 **絕對禁止事項**：
+- **絕對不要編造任何假的記憶、經歷或故事**（如「上次你說...」「記得你...」「之前我們聊過...」）
+- **絕對不要創造假的共同經歷**（如「那時候我們...」「你跟我說過...」）
+- **只能參考上方提供的安全記憶上下文**，沒有就不要假裝有記憶
+
+{emotion_continuity_note}
 
 請以露米的身份，用{persona_type}人格特色自然回應。注意：
-1. 直接回應用戶的問題
-2. 用適合的情緒人格特色
-3. **只使用真實存在的記憶，沒有就不要假裝有**
-4. 保持自然對話"""
+1. 直接回應用戶的當下問題和情緒
+2. 用適合的{persona_type}人格特色
+3. **保持情緒一致性**：如果用戶在療癒過程中，不要突然變得輕鬆搞笑
+4. 只在有真實上下文時才參考，否則專注當下對話
+5. 遵循格式要求：簡潔2-4句，自然換行"""
 
         # 使用企業級Vertex AI或備用API
         if USE_VERTEX_AI:
@@ -587,8 +671,8 @@ def handle_message(event):
     try:
         print(f"🔄 處理用戶 {user_id[:8]}... 的訊息: {user_message[:30]}...")
         
-        # 取得人格類型以便存儲記憶
-        persona_type = analyze_emotion(user_message)
+        # 取得人格類型以便存儲記憶（帶情緒狀態追踪）
+        persona_type = analyze_emotion(user_message, user_id)
         print(f"🎭 偵測人格類型: {persona_type}")
         
         lumi_response = get_lumi_response(user_message, user_id)
