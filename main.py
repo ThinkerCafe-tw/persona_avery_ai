@@ -273,7 +273,7 @@ def analyze_emotion(message):
             return 'soul'
     
     # Healing模式關鍵詞
-    healing_keywords = ['難過', '傷心', '痛苦', '壓力', '焦慮', '累', '辛苦', '沮喪', '失望', '挫折', '煩', '糟']
+    healing_keywords = ['難過', '傷心', '痛苦', '壓力', '焦慮', '累', '辛苦', '沮喪', '失望', '挫折', '煩', '糟', '失敗', '不行', '沒用', '爛', '討厭自己', '自責', '崩潰', '受傷', '委屈']
     for keyword in healing_keywords:
         if keyword in message_lower:
             print(f"🎯 關鍵詞檢測: 找到'{keyword}' -> healing模式")
