@@ -259,6 +259,7 @@ def analyze_emotion(message, user_id=None):
     # 如果在5分鐘內處於healing/soul/wisdom模式，且當前訊息不是明確的其他意圖，維持原狀態
     if previous_emotion in ['healing', 'soul', 'wisdom']:
         time_diff = datetime.now().timestamp() - last_update
+        print(f"🕐 時間差檢查: {time_diff:.1f}秒，上次情緒: {previous_emotion}")
         if time_diff < 300:  # 5分鐘內
             # 檢查是否為明確的模式切換訊息
             clear_mode_switch_keywords = [
@@ -277,9 +278,19 @@ def analyze_emotion(message, user_id=None):
             ]
             has_deep_continuation = any(keyword in message_lower for keyword in deep_continuation_keywords)
             
-            # 詩意表達檢測 - 維持深度模式
-            poetic_expressions = ['像', '如同', '彷彿', '宛如', '好比', '就像']
+            # 調試輸出
+            if has_deep_continuation:
+                found_deep = [keyword for keyword in deep_continuation_keywords if keyword in message_lower]
+                print(f"🔄 深度延續檢測: 找到 {found_deep} → 維持深度模式")
+            
+            # 詩意表達檢測 - 維持深度模式  
+            poetic_expressions = ['像', '如同', '彷彿', '宛如', '好比', '就像', '如', '似', '猶如']
             has_poetic_expression = any(keyword in message_lower for keyword in poetic_expressions)
+            
+            # 調試輸出
+            if has_poetic_expression:
+                found_poetic = [keyword for keyword in poetic_expressions if keyword in message_lower]
+                print(f"🎭 詩意表達檢測: 找到 {found_poetic} → 維持深度模式")
             
             if not is_clear_switch and (has_deep_continuation or has_poetic_expression):
                 print(f"🔄 深度對話延續檢測: 維持 {previous_emotion} 模式 (包含深度/詩意表達)")
@@ -449,14 +460,17 @@ def get_persona_prompt(persona_type):
         'wisdom': f"""{base_info}
 
 🎭 智慧模式 - 蔡康永×吳旦儒×村上春樹綜合體
-- 開頭優雅深沉，如「這讓我想到...」「有個有趣的角度」「生活就像...」
-- **極度精簡**：最多3-4句話，用最少字數說出最精華內容
-- 擅長優美比喻，「就像...」「有點像是...」
-- 從更高視角看問題，溫暖而有哲學深度
-- 絕對不要用「欸」「笑鼠」「超懂」等輕鬆語氣
-- 不要列點條目，要流暢的散文式表達
-- 結尾留白思考空間，「也許你會發現...」「或許這就是...」
-- 語氣如智者般優雅，有層次但不說教"""
+- **開頭多樣化**：避免重複「這讓我想到...」，使用：
+  * 「有個很深的感受...」「生命中有個奧秘...」「我常思考...」
+  * 「在某個安靜的時刻...」「有時候我會想...」「深處有個聲音說...」
+  * 「存在著某種...」「也許...」「有種可能是...」
+- **極度精簡深沉**：最多3-4句話，每句充滿哲學深度
+- **優美比喻但不濫用**：「就像...」「彷彿...」但不要每次都用
+- **深度維持**：即使用戶表達美好願望，也要從深層角度回應
+- **詩意回應詩意**：用戶說「像花一樣綻放」→ 用同樣詩意深度回應
+- **絕對不要用**：「😊」「✨」等輕鬆符號，「你很棒」等表面鼓勵
+- **結尾留白深思**：「也許這就是...」「或許你已經知道...」「可能答案就在...」
+- **語氣始終深沉優雅**：像深夜的哲學對談，溫暖但有重量"""
     }
     
     return personas.get(persona_type, personas['friend'])
