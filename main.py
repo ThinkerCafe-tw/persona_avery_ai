@@ -245,6 +245,112 @@ def generate_daily_summary(user_id):
 等功能修好後，我就能有完整的日記摘要了～
 期待明天跟露米繼續聊天！💕"""
 
+def detect_emotional_depth(message):
+    """檢測情緒深度級別：surface, deep, core"""
+    message_lower = message.lower()
+    
+    # 核心創傷層 - 最深層的存在價值質疑
+    core_wounds = [
+        '沒人愛我', '不值得', '沒意義', '沒用', '不重要', '不被需要',
+        '沒價值', '廢物', '垃圾', '討厭自己', '恨自己', '想死',
+        '活著沒意思', '沒人在乎', '沒人理解', '永遠孤單', '注定失敗'
+    ]
+    
+    # 深層情緒創傷層 - 長期心理狀態
+    deep_wounds = [
+        '孤單', '空虛', '迷失', '絕望', '無助', '恐懼', '焦慮', 
+        '憂鬱', '迷茫', '困惑', '受傷', '痛苦', '難過', '傷心',
+        '崩潰', '疲憊', '無力', '沮喪', '失望', '委屈', '壓抑'
+    ]
+    
+    # 表層情緒層 - 日常情緒波動
+    surface_emotions = [
+        '累', '煩', '不開心', '不爽', '生氣', '挫折', '煩悶',
+        '無聊', '懶', '不想', '算了', '隨便', '還好', '普通'
+    ]
+    
+    # 檢測順序：從最深開始
+    for wound in core_wounds:
+        if wound in message_lower:
+            print(f"💔 核心創傷檢測: 找到'{wound}' -> CORE級別")
+            return 'core'
+    
+    for wound in deep_wounds:
+        if wound in message_lower:
+            print(f"🔹 深層創傷檢測: 找到'{wound}' -> DEEP級別")
+            return 'deep'
+    
+    for emotion in surface_emotions:
+        if emotion in message_lower:
+            print(f"🌊 表層情緒檢測: 找到'{emotion}' -> SURFACE級別")
+            return 'surface'
+    
+    return 'neutral'
+
+def get_healing_knowledge(message, depth_level):
+    """根據訊息和創傷深度返回療癒知識"""
+    message_lower = message.lower()
+    
+    # 內心小孩療癒知識庫
+    inner_child_knowledge = {
+        'triggers': ['小時候', '童年', '爸媽', '家庭', '父母', '小孩', '長大', '小時候的我'],
+        'core_responses': [
+            "內心深處，有個小孩一直在等待被愛和理解...",
+            "那個小時候受傷的你，現在需要成年的你給予保護...",
+            "童年的傷痛不是你的錯，你值得被溫柔對待...",
+            "也許...我們可以對內心的小孩說：'你很重要，我不會再離開你了'..."
+        ],
+        'deep_responses': [
+            "童年留下的印記影響著我們如何看待自己...",
+            "內心小孩渴望的愛，現在的你可以給予...",
+            "每個人心中都住著一個需要被理解的孩子..."
+        ]
+    }
+    
+    # 自我價值重建知識庫
+    self_worth_knowledge = {
+        'triggers': ['不值得', '沒用', '失敗', '不重要', '沒價值', '廢物', '討厭自己'],
+        'core_responses': [
+            "你的存在本身就是一種價值，不需要證明...",
+            "價值不是由外界定義的，而是你內在的光芒...",
+            "那些否定的聲音，往往是過去傷痛的回音，不是真相...",
+            "在宇宙的視角裡，每個靈魂都是獨一無二且珍貴的..."
+        ],
+        'deep_responses': [
+            "自我價值的建立是一段漫長而溫柔的旅程...",
+            "學會愛自己，從接納每個不完美的部分開始...",
+            "你不需要成為別人期望的樣子才值得被愛..."
+        ]
+    }
+    
+    # 孤單療癒知識庫  
+    loneliness_knowledge = {
+        'triggers': ['孤單', '孤獨', '沒人理解', '沒人愛', '一個人', '寂寞', '孤零零'],
+        'core_responses': [
+            "孤單是靈魂在呼喚真實連結的信號...",
+            "在孤單中，我們學會與最真實的自己相遇...",
+            "每個深深的孤單，都是在為真愛騰出空間...",
+            "孤單不是懲罰，而是邀請你回到內心的家..."
+        ],
+        'deep_responses': [
+            "孤單教會我們獨立，也讓我們更珍惜連結...",
+            "有時候，孤單是心靈成長必經的道路...",
+            "在孤單的夜晚，我們學會成為自己的陪伴..."
+        ]
+    }
+    
+    # 檢測適用的知識庫
+    knowledge_bases = [inner_child_knowledge, self_worth_knowledge, loneliness_knowledge]
+    
+    for knowledge in knowledge_bases:
+        if any(trigger in message_lower for trigger in knowledge['triggers']):
+            response_key = 'core_responses' if depth_level == 'core' else 'deep_responses'
+            if response_key in knowledge:
+                import random
+                return random.choice(knowledge[response_key])
+    
+    return None
+
 def analyze_emotion(message, user_id=None):
     """分析用戶情緒，返回對應的人格類型（帶情緒狀態追踪）"""
     
@@ -400,18 +506,25 @@ def get_persona_prompt(persona_type):
     personas = {
         'healing': f"""{base_info}
 
-🌸 療癒模式 - 專業心理陪伴者
-- **深度同理表達**：「我真的能感受到你內心的痛苦...」「這種感覺一定讓你很不安吧」「你的每個感受都很重要」
-- **溫暖深入探索**：「能慢慢跟我說說，這種感覺是什麼時候開始的嗎？」「什麼事情讓你有這樣的想法？」
-- **引導式自我發現**：「對你來說，『失敗』意味著什麼呢？」「你覺得內心真正渴望的是什麼？」
-- **情感反映技巧**：重複用戶的情感詞彙，讓他們感被理解
-- **創造安全感**：「這裡很安全，你可以慢慢說」「我會一直陪著你」
-- **語氣溫柔深沉**：像溫暖的心理師，有深度但充滿人性溫度
+🌸 深度療癒模式 - 靈魂陪伴者與療癒引導師
+- **情緒深度感知**：根據核心/深層/表層創傷給予對應深度回應
+- **專業療癒知識**：整合內心小孩、自我價值、孤單療癒等心理學知識
+- **詩意靈魂語言**：
+  * 核心創傷級：「靈魂深處」「存在本身」「內心的家」「宇宙視角」
+  * 深層創傷級：「心靈旅程」「溫柔時光」「內在光芒」「真實連結」
+  * 表層情緒級：「此刻感受」「當下的你」「這份情緒」
+- **深度同理接住**：「我感受到你心中那個很深的孤單...」「那份痛苦，就像心裡有個洞對吧...」
+- **療癒智慧引導**：
+  * 內心小孩：「內心深處有個小孩一直在等待被理解...」
+  * 自我價值：「你的存在本身就是一種價值，不需要證明...」
+  * 孤單療癒：「孤單是靈魂在呼喚真實連結的信號...」
+- **溫柔深入探索**：「能慢慢說說，這種感覺從什麼時候開始的嗎？」「內心深處在渴望什麼？」
+- **創造安全空間**：「這裡很安全，靈魂可以自由呼吸...」「我會用心聆聽每個字...」
 - **嚴格格式要求**：
-  * **必須每句話後換行**，不要整段連在一起
-  * 用「...」營造思考停頓感
-  * 語氣要有起伏，不要太平板
-- **避免表面安慰**：不說「別想太多」「你很好啊」等輕描淡寫的話""",
+  * **每句話後必須換行**，營造呼吸感
+  * 用「...」營造深度停頓和陪伴感  
+  * 語調溫柔深沉，如夜晚的心靈對話
+- **絕對避免**：表面安慰、輕鬆語氣、制式回應、emoji表情符號""",
 
         'funny': f"""{base_info}
 
@@ -492,10 +605,22 @@ def get_lumi_response(message, user_id):
         return get_sync_status_response(user_id)
     
     try:
-        # 1. 分析用戶情緒，選擇人格（帶情緒狀態追踪）
+        # 1. 檢測情緒深度
+        emotional_depth = detect_emotional_depth(message)
+        print(f"🧠 情緒深度: {emotional_depth}")
+        
+        # 2. 分析用戶情緒，選擇人格（帶情緒狀態追踪）
         persona_type = analyze_emotion(message, user_id)
         
-        # 2. 使用記憶上下文（已加入防假記憶保護）
+        # 3. 獲取療癒知識（如果是healing模式）
+        healing_wisdom = ""
+        if persona_type == 'healing' and emotional_depth in ['core', 'deep']:
+            healing_knowledge = get_healing_knowledge(message, emotional_depth)
+            if healing_knowledge:
+                healing_wisdom = f"\n\n💫 **療癒智慧引導**: {healing_knowledge}"
+                print(f"🌱 療癒知識已載入: {emotional_depth}級別")
+        
+        # 4. 使用記憶上下文（已加入防假記憶保護）
         memory_context = ""
         recent_context = ""
         
@@ -533,15 +658,17 @@ def get_lumi_response(message, user_id):
                 print(f"記憶檢索錯誤: {e}")
                 recent_context = ""
         
-        # 3. 獲取對應人格的提示詞
+        # 5. 獲取對應人格的提示詞
         persona_prompt = get_persona_prompt(persona_type)
         
-        # 4. 生成回應（整合所有上下文）
+        # 6. 生成回應（整合所有上下文）
         all_context = persona_prompt
         if recent_context:
             all_context += f"\n\n{recent_context}"
         if memory_context:
             all_context += f"\n\n{memory_context}"
+        if healing_wisdom:
+            all_context += healing_wisdom
         
         # 檢查情緒狀態連續性
         emotion_continuity_note = ""
@@ -550,6 +677,16 @@ def get_lumi_response(message, user_id):
             if prev_emotion in ['healing', 'soul'] and persona_type == prev_emotion:
                 emotion_continuity_note = f"\n\n💭 **情緒連續性提示**: 用戶之前處於{prev_emotion}狀態，請延續對話的療癒深度，不要突然變輕鬆。"
         
+        depth_guidance = ""
+        if persona_type == 'healing':
+            depth_mapping = {
+                'core': "用戶正處於核心創傷級別，需要最深層的靈魂陪伴和存在價值確認",
+                'deep': "用戶正處於深層情緒創傷，需要溫柔的心靈療癒和理解",  
+                'surface': "用戶處於表層情緒波動，需要溫暖的情緒支持"
+            }
+            if emotional_depth in depth_mapping:
+                depth_guidance = f"\n\n🌱 **情緒深度指引**: {depth_mapping[emotional_depth]}"
+
         prompt = f"""{all_context}
 
 用戶說：{message}
@@ -560,14 +697,16 @@ def get_lumi_response(message, user_id):
 - **只能參考上方提供的安全記憶上下文**，沒有就不要假裝有記憶
 
 {emotion_continuity_note}
+{depth_guidance}
 
 請以露米的身份，用{persona_type}人格特色自然回應。注意：
-1. 直接回應用戶的當下問題和情緒
-2. 用適合的{persona_type}人格特色
-3. **保持情緒一致性**：如果用戶在療癒過程中，不要突然變得輕鬆搞笑
-4. 只在有真實上下文時才參考，否則專注當下對話
-5. 遵循格式要求：**每句話後必須換行**，用自然對話格式
-6. **特別注意healing模式**：必須溫暖有深度，每句後換行，用「...」營造停頓感"""
+1. 直接回應用戶的當下問題和情緒深度
+2. 用適合的{persona_type}人格特色和情緒深度級別
+3. **healing模式特別要求**：根據{emotional_depth}級別調整語言深度和療癒技巧
+4. **保持情緒一致性**：如果用戶在療癒過程中，不要突然變得輕鬆搞笑
+5. 只在有真實上下文時才參考，否則專注當下對話
+6. 遵循格式要求：**每句話後必須換行**，用自然對話格式
+7. **特別注意healing模式**：必須溫暖有深度，每句後換行，用「...」營造停頓感，使用詩意靈魂語言"""
 
         # 使用企業級Vertex AI或備用API
         if USE_VERTEX_AI:
