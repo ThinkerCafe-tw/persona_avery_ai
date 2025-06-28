@@ -8,12 +8,14 @@ from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import (
     Configuration, ApiClient, MessagingApi, ReplyMessageRequest,
-    TextMessage
+    TextMessage, AudioMessage
 )
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from datetime import datetime
 import json
 from simple_memory import SimpleLumiMemory
+import requests
+import tempfile
 
 load_dotenv()
 app = Flask(__name__)
@@ -161,11 +163,171 @@ except Exception as e:
     print(f"記憶系統初始化失敗: {e}")
     memory_manager = None
 
+# Lumi語音系統
+class LumiVoiceSystem:
+    def __init__(self):
+        self.elevenlabs_api_key = os.getenv('ELEVENLABS_API_KEY')
+        self.base_url = "https://api.elevenlabs.io/v1"
+        
+        # Stacy - Sweet and Cute Chinese 女聲
+        self.chinese_voice_id = "pqHfZKP75CvOlQylNhV4"
+        
+        if not self.elevenlabs_api_key or self.elevenlabs_api_key == "YOUR_ACTUAL_API_KEY_HERE":
+            print("⚠️ 11Labs API Key未設定，語音功能暫時停用")
+            self.enabled = False
+        else:
+            print("🎤 Lumi語音系統已初始化 (Stacy聲音)")
+            self.enabled = True
+    
+    def generate_lumi_voice(self, text, persona_type="friend"):
+        """為露米生成語音，根據人格調整參數"""
+        if not self.enabled:
+            print("⚠️ 語音系統未啟用")
+            return None
+            
+        # 針對Stacy (Sweet & Cute) 優化的語音參數
+        voice_settings = {
+            "healing": {
+                "stability": 0.8,  # 提高穩定性，減少可愛感
+                "similarity_boost": 0.9,  # 保持聲音清晰
+                "style": 0.2  # 降低風格化，更自然溫柔
+            },
+            "friend": {
+                "stability": 0.5,  # 適度活潑
+                "similarity_boost": 0.7,  # 保持Stacy特色
+                "style": 0.6  # 發揮Sweet & Cute特質
+            },
+            "funny": {
+                "stability": 0.3,  # 更活潑多變
+                "similarity_boost": 0.8,  # 保持清晰
+                "style": 0.8  # 充分發揮俏皮可愛
+            },
+            "knowledge": {
+                "stability": 0.7,  # 穩重一些
+                "similarity_boost": 0.8,  # 清晰表達
+                "style": 0.3  # 降低可愛感，增加專業感
+            },
+            "wisdom": {
+                "stability": 0.9,  # 最穩定
+                "similarity_boost": 0.9,  # 最清晰
+                "style": 0.1  # 最低風格化，追求深沉感
+            },
+            "soul": {
+                "stability": 0.6,  # 適中
+                "similarity_boost": 0.8,  # 清晰
+                "style": 0.4  # 溫柔感性
+            }
+        }
+        
+        settings = voice_settings.get(persona_type, voice_settings["friend"])
+        
+        url = f"{self.base_url}/text-to-speech/{self.chinese_voice_id}"
+        
+        headers = {
+            "Accept": "audio/mpeg",
+            "Content-Type": "application/json",
+            "xi-api-key": self.elevenlabs_api_key
+        }
+        
+        data = {
+            "text": text,
+            "model_id": "eleven_monolingual_v1",
+            "voice_settings": settings
+        }
+        
+        try:
+            print(f"🎤 生成 {persona_type} 模式語音: {text[:30]}...")
+            response = requests.post(url, json=data, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                print(f"✅ 語音生成成功 ({len(response.content)} bytes)")
+                return response.content
+            else:
+                print(f"❌ 語音生成失敗: {response.status_code}")
+                print(response.text)
+                return None
+                
+        except Exception as e:
+            print(f"❌ 語音生成錯誤: {e}")
+            return None
+    
+    def upload_audio_to_temp_host(self, audio_content):
+        """將音頻上傳到臨時托管服務"""
+        try:
+            # 嘗試使用0x0.st (更可靠的臨時文件服務)
+            files = {'file': ('lumi_voice.mp3', audio_content, 'audio/mpeg')}
+            
+            # 嘗試多個服務
+            services = [
+                ('tmpfiles_org', 'https://tmpfiles.org/api/v1/upload'),
+                ('file_io', 'https://file.io'),
+                ('0x0_st', 'https://0x0.st')
+            ]
+            
+            for service_name, service_url in services:
+                try:
+                    print(f"🌐 嘗試上傳到 {service_name}...")
+                    response = requests.post(service_url, files=files, timeout=30)
+                    
+                    if response.status_code == 200:
+                        if service_name == 'tmpfiles_org':
+                            # tmpfiles.org 返回JSON
+                            try:
+                                result = response.json()
+                                if result.get('status') == 'success':
+                                    download_url = result.get('data', {}).get('url')
+                                    if download_url:
+                                        print(f"✅ 音頻已上傳到tmpfiles.org: {download_url}")
+                                        return download_url
+                            except:
+                                continue
+                        elif service_name == 'file_io':
+                            # file.io 返回JSON
+                            try:
+                                result = response.json()
+                                if result.get('success'):
+                                    download_url = result.get('link')
+                                    print(f"✅ 音頻已上傳到file.io: {download_url}")
+                                    return download_url
+                            except:
+                                continue
+                        elif service_name == '0x0_st':
+                            # 0x0.st 直接返回URL
+                            download_url = response.text.strip()
+                            if download_url.startswith('http'):
+                                print(f"✅ 音頻已上傳到0x0.st: {download_url}")
+                                return download_url
+                    
+                    print(f"⚠️ {service_name} 上傳失敗: {response.status_code}")
+                    if response.text:
+                        print(f"   回應: {response.text[:100]}...")
+                    
+                except Exception as service_error:
+                    print(f"⚠️ {service_name} 服務錯誤: {service_error}")
+                    continue
+            
+            print("❌ 所有音頻上傳服務都失敗")
+            return None
+            
+        except Exception as e:
+            print(f"❌ 音頻上傳總體錯誤: {e}")
+            return None
+
+# 初始化語音系統
+try:
+    voice_system = LumiVoiceSystem()
+except Exception as e:
+    print(f"語音系統初始化失敗: {e}")
+    voice_system = None
+
 # 用戶對話記憶存儲 (向量資料庫為主，記憶體為備用)
 user_conversations = {}
 
 # 用戶情緒狀態追踪（防止不當模式跳轉）
 user_emotion_states = {}
+
+# 用戶語音偏好設定
+user_voice_preferences = {}
 
 def store_conversation(user_id, message, response):
     """儲存用戶對話記錄"""
@@ -629,6 +791,15 @@ def get_persona_prompt(persona_type):
     return personas.get(persona_type, personas['friend'])
 
 def get_lumi_response(message, user_id):
+    # 檢查語音控制指令
+    if any(keyword in message for keyword in ['開啟語音', '打開語音', '要語音', '語音模式']):
+        user_voice_preferences[user_id] = True
+        return "好的！我會用聲音跟你說話囉～從現在開始你會收到我的語音訊息！想要關閉的話跟我說「關閉語音」就可以了 🎤"
+    
+    if any(keyword in message for keyword in ['關閉語音', '不要語音', '只要文字', '靜音模式']):
+        user_voice_preferences[user_id] = False
+        return "好的～我會安靜一點，只用文字跟你聊天！如果想聽我的聲音，隨時說「開啟語音」就可以了 📝"
+    
     # 檢查是否為日記摘要指令
     summary_keywords = ['總結今天', '今日摘要', '生成日記', '今天的日記', '幫我總結', '今日總結', '今天聊了什麼', '總結一下我今天的日記', '幫我總結一下', '可以幫我總結']
     if any(keyword in message for keyword in summary_keywords):
@@ -933,11 +1104,45 @@ def handle_message(event):
             except Exception as e:
                 print(f"記憶系統存儲錯誤: {e}")
 
-        # 發送回應
+        # 準備回應訊息
+        messages = [TextMessage(text=lumi_response)]
+        
+        # 嘗試生成語音訊息（檢查用戶偏好）
+        user_wants_voice = user_voice_preferences.get(user_id, False)  # 預設關閉
+        if voice_system and voice_system.enabled and user_wants_voice:
+            try:
+                print(f"🎤 為 {persona_type} 模式生成語音...")
+                
+                # 生成語音
+                audio_content = voice_system.generate_lumi_voice(lumi_response, persona_type)
+                
+                if audio_content:
+                    # 上傳音頻到臨時托管
+                    audio_url = voice_system.upload_audio_to_temp_host(audio_content)
+                    
+                    if audio_url:
+                        # 添加語音訊息（持續時間估算：大約每秒3個中文字）
+                        duration_estimate = max(1000, len(lumi_response) * 333)  # 毫秒
+                        
+                        audio_message = AudioMessage(
+                            original_content_url=audio_url,
+                            duration=duration_estimate
+                        )
+                        messages.append(audio_message)
+                        print(f"🎵 語音訊息已準備 (預估 {duration_estimate}ms)")
+                    else:
+                        print("⚠️ 音頻上傳失敗，僅發送文字")
+                else:
+                    print("⚠️ 語音生成失敗，僅發送文字")
+                    
+            except Exception as voice_error:
+                print(f"⚠️ 語音處理錯誤: {voice_error}")
+        
+        # 發送回應（文字+語音或僅文字）
         line_bot_api.reply_message(
             ReplyMessageRequest(
                 reply_token=event.reply_token,
-                messages=[TextMessage(text=lumi_response)]
+                messages=messages
             )
         )
         print(f"📤 回應已送出給用戶 {user_id[:8]}...")
