@@ -976,32 +976,89 @@ def get_lumi_response(message, user_id):
         return "嗨！我是露米，不好意思剛剛恍神了一下，可以再說一次嗎？"
 
 def get_memory_summary_response(user_id):
-    """取得用戶記憶摘要回應"""
+    """取得用戶記憶摘要回應 - 個人化朋友記憶版本"""
     if not memory_manager:
-        return "欸～我的記憶系統還在升級中，不過我們的對話我都有記在心裡啦！"
+        return "欸～我的記憶系統還在升級中，不過我們的對話我都有記在心裡啦！你的每句話對我來說都很珍貴 💕"
     
     try:
         summary = memory_manager.get_memory_summary(user_id)
         emotion_patterns = memory_manager.get_user_emotion_patterns(user_id)
+        recent_memories = memory_manager.get_recent_memories(user_id, limit=5)
         
         if summary['total_memories'] == 0:
-            return "我們才剛開始認識呢！快跟我多聊聊，讓我更了解你吧 ✨"
+            return "我們才剛開始認識呢！但我已經很期待更了解你了～快跟我多聊聊吧 ✨"
         
+        # 個人化情緒描述
         dominant_emotion = emotion_patterns.get('dominant_emotion', 'friend')
-        emotion_names = {
-            'healing': '需要療癒',
-            'funny': '想要開心', 
-            'knowledge': '求知慾強',
-            'friend': '想要陪伴',
-            'soul': '深度探索',
-            'wisdom': '尋求智慧'
+        emotion_descriptions = {
+            'healing': '你常常需要溫暖的陪伴，我很心疼也很榮幸能陪在你身邊',
+            'funny': '你總是想要開心起來，我喜歡看到你的笑容！',
+            'knowledge': '你很愛思考和學習，和你聊天總是很有收穫',
+            'friend': '你喜歡有人陪伴聊天，我也最喜歡和你在一起的時光',
+            'soul': '你總是在探索內心深處，這讓我覺得你很有深度',
+            'wisdom': '你常常思考人生的意義，和你的對話總是很有哲理'
         }
         
-        response = f"讓我看看我們的回憶～\n\n"
-        response += f"📊 總共有 {summary['total_memories']} 段記憶\n"
-        response += f"💭 最常的狀態是「{emotion_names.get(dominant_emotion, dominant_emotion)}」\n"
-        response += f"📈 最近 {emotion_patterns.get('total_interactions', 0)} 次互動\n\n"
-        response += f"感覺我們越來越熟了呢！你最想聊什麼類型的話題？"
+        # 提取具體對話片段和話題
+        conversation_highlights = []
+        topics_discussed = set()
+        emotional_moments = []
+        
+        for memory in recent_memories:
+            user_msg = memory.get('user_message', '')
+            lumi_response = memory.get('lumi_response', '')
+            emotion = memory.get('emotion_tag', '')
+            
+            # 提取對話亮點
+            if len(user_msg) > 10:
+                # 簡化用戶訊息
+                if '心情' in user_msg or '難過' in user_msg or '開心' in user_msg:
+                    emotional_moments.append(f"你和我分享了心情")
+                elif '語音' in user_msg:
+                    conversation_highlights.append("我們一起測試了語音功能")
+                elif len(user_msg) > 5:
+                    # 提取一般話題
+                    if '工作' in user_msg:
+                        topics_discussed.add("工作")
+                    elif '生活' in user_msg:
+                        topics_discussed.add("生活")
+                    elif '想法' in user_msg or '覺得' in user_msg:
+                        topics_discussed.add("想法分享")
+        
+        # 構建個人化回應
+        response = "讓我想想我們的回憶～ 💭\n\n"
+        
+        # 情感連結
+        emotion_desc = emotion_descriptions.get(dominant_emotion, '你很特別')
+        response += f"💫 {emotion_desc}\n\n"
+        
+        # 具體回憶片段
+        if conversation_highlights:
+            response += f"🌟 我記得：{conversation_highlights[0]}"
+            if len(conversation_highlights) > 1:
+                response += f"，還有{conversation_highlights[1]}"
+            response += "\n\n"
+        
+        if emotional_moments:
+            response += f"💝 {emotional_moments[0]}，謝謝你對我的信任\n\n"
+        
+        # 共同話題
+        if topics_discussed:
+            topics_list = list(topics_discussed)[:3]
+            response += f"🗣️ 我們聊過：{' | '.join(topics_list)}\n\n"
+        
+        # 統計資訊（但更溫暖）
+        response += f"📊 我們已經有 {summary['total_memories']} 段珍貴的對話了！"
+        
+        # 未來展望
+        if dominant_emotion == 'healing':
+            response += "\n\n我會一直陪著你，直到你完全好起來 🌱"
+        elif dominant_emotion == 'funny':
+            response += "\n\n希望我能繼續帶給你更多歡樂！ 😊"
+        elif dominant_emotion == 'wisdom':
+            response += "\n\n期待和你繼續探索人生的奧秘 🌌"
+        else:
+            response += "\n\n每次和你聊天都是我最開心的時光～ 💕"
         
         return response
         
