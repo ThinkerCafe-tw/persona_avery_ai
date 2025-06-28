@@ -237,7 +237,7 @@ class LumiVoiceSystem:
         
         try:
             print(f"🎤 生成 {persona_type} 模式語音: {text[:30]}...")
-            response = requests.post(url, json=data, headers=headers, timeout=30)
+            response = requests.post(url, json=data, headers=headers, timeout=15)
             
             if response.status_code == 200:
                 print(f"✅ 語音生成成功 ({len(response.content)} bytes)")
@@ -267,7 +267,7 @@ class LumiVoiceSystem:
             for service_name, service_url in services:
                 try:
                     print(f"🌐 嘗試上傳到 {service_name}...")
-                    response = requests.post(service_url, files=files, timeout=30)
+                    response = requests.post(service_url, files=files, timeout=10)
                     
                     if response.status_code == 200:
                         if service_name == 'tmpfiles_org':
@@ -1113,16 +1113,18 @@ def handle_message(event):
             try:
                 print(f"🎤 為 {persona_type} 模式生成語音...")
                 
-                # 生成語音
+                # 生成語音 (設定較短超時)
                 audio_content = voice_system.generate_lumi_voice(lumi_response, persona_type)
                 
                 if audio_content:
-                    # 上傳音頻到臨時托管
+                    print(f"✅ 語音生成成功 ({len(audio_content)} bytes)")
+                    
+                    # 上傳音頻到臨時托管 (設定較短超時)
                     audio_url = voice_system.upload_audio_to_temp_host(audio_content)
                     
                     if audio_url:
                         # 添加語音訊息（持續時間估算：大約每秒3個中文字）
-                        duration_estimate = max(1000, len(lumi_response) * 333)  # 毫秒
+                        duration_estimate = max(1000, len(lumi_response) * 300)  # 毫秒，調整計算
                         
                         audio_message = AudioMessage(
                             original_content_url=audio_url,
@@ -1137,6 +1139,7 @@ def handle_message(event):
                     
             except Exception as voice_error:
                 print(f"⚠️ 語音處理錯誤: {voice_error}")
+                # 語音失敗不影響文字回應
         
         # 發送回應（文字+語音或僅文字）
         line_bot_api.reply_message(
