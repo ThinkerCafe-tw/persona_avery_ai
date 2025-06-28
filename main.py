@@ -1170,7 +1170,19 @@ def handle_audio_message(event):
             print(f"🎤➡️📝 語音轉文字成功: {transcribed_text}")
             
             # 將轉換後的文字當作普通文字訊息處理
-            process_text_message(user_id, transcribed_text, event.reply_token)
+            try:
+                process_text_message(user_id, transcribed_text, event.reply_token)
+            except Exception as ai_error:
+                print(f"❌ AI處理語音轉文字失敗: {ai_error}")
+                # 如果AI處理失敗，至少告知用戶我們聽到了什麼
+                fallback_reply = f"我聽到你說「{transcribed_text}」，但我的大腦暫時當機了！請再試一次，或用文字跟我說～"
+                
+                line_bot_api.reply_message(
+                    ReplyMessageRequest(
+                        reply_token=event.reply_token,
+                        messages=[TextMessage(text=fallback_reply)]
+                    )
+                )
             
         else:
             # 語音識別失敗的友善回應
