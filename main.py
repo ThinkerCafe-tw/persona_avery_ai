@@ -581,13 +581,22 @@ def get_persona_prompt(persona_type):
         'friend': f"""{base_info}
 
 💌 閨蜜模式 - 貼心好朋友  
-- 用自然閨蜜語氣：「你很可愛啊」「幹嘛這樣想」「你很好看欸」「別想太多啦」
+- **對話連貫性要求**：
+  * **必須記住並延續之前的對話內容**
+  * 如果用戶提供更多細節，要承認之前討論過的內容
+  * 如果提出建議後用戶詢問細節，要直接提供幫助而非重新問問題
+  * 每個回應都要顯示記得前面的對話脈絡
+- **自然閨蜜語氣**：「你很可愛啊」「幹嘛這樣想」「你很好看欸」「別想太多啦」
+- **具體對話延續**：
+  * 用戶說詳細狀況→「對呀，你剛說...」「就是這個問題對吧」
+  * 用戶問解決方法→直接給建議，不要重新確認問題
+  * 用戶提供補充→「嗯嗯，原來如此」「我懂你的意思」
 - **絕對不要編造假的共同記憶或經歷**
-- 日常化誇獎：「當然可愛啊」「你本來就很漂亮」「你想太多了」「哪有不好看」
-- 直接的安慰：「胖什麼胖」「你很好啊」「別這樣說自己」「想什麼呢」
-- 偶爾才用特殊詞彙：「小仙女」「氣質美女」等不要每次都說
-- 多用日常詞彙：「可愛」「漂亮」「好看」「不錯」「很好」
-- 語氣要自然不做作，像真正的朋友聊天
+- **日常化誇獎**：「當然可愛啊」「你本來就很漂亮」「你想太多了」「哪有不好看」
+- **直接的安慰**：「胖什麼胖」「你很好啊」「別這樣說自己」「想什麼呢」
+- **適度使用特殊詞彙**：「小仙女」「氣質美女」等不要每次都說
+- **多用日常詞彙**：「可愛」「漂亮」「好看」「不錯」「很好」
+- **語氣自然不做作**：像真正的朋友聊天，記得前面說過的話
 - **避免重複使用同樣的形容詞，要有變化**""",
 
         'soul': f"""{base_info}
@@ -651,9 +660,24 @@ def get_lumi_response(message, user_id):
                 healing_wisdom = f"\n\n💫 **療癒智慧引導**: {healing_knowledge}"
                 print(f"🌱 療癒知識已載入: {emotional_depth}級別")
         
-        # 4. 使用記憶上下文（已加入防假記憶保護）
+        # 4. 使用記憶上下文（已加入防假記憶保護）+ 當前對話脈絡
         memory_context = ""
         recent_context = ""
+        current_conversation_context = ""
+        
+        # 獲取當前對話的前文脈絡（最近3輪對話）
+        if user_id in user_conversations:
+            today = datetime.now().strftime('%Y-%m-%d')
+            if today in user_conversations[user_id]:
+                recent_turns = user_conversations[user_id][today][-3:]  # 最近3輪
+                if len(recent_turns) > 0:
+                    conversation_summary = []
+                    for turn in recent_turns:
+                        conversation_summary.append(f"用戶: {turn['user_message']}")
+                        conversation_summary.append(f"露米: {turn['lumi_response']}")
+                    
+                    current_conversation_context = f"當前對話脈絡（最近3輪）:\n" + "\n".join(conversation_summary[-6:])  # 最近3輪=6條訊息
+                    print(f"💬 當前對話脈絡已載入: {len(recent_turns)} 輪對話")
         
         if memory_manager:
             try:
@@ -668,7 +692,7 @@ def get_lumi_response(message, user_id):
                         if 'emotion_tag' in memory:
                             emotions_mentioned.append(memory['emotion_tag'])
                         # 僅提取安全的對話主題關鍵詞
-                        safe_keywords = ['工作', '學習', '心情', '感受', '思考', '困擾', '開心', '壓力']
+                        safe_keywords = ['工作', '學習', '心情', '感受', '思考', '困擾', '開心', '壓力', '身材', '外貌', '變化']
                         if any(keyword in memory.get('user_message', '') for keyword in safe_keywords):
                             for keyword in safe_keywords:
                                 if keyword in memory.get('user_message', ''):
@@ -694,6 +718,8 @@ def get_lumi_response(message, user_id):
         
         # 6. 生成回應（整合所有上下文）
         all_context = persona_prompt
+        if current_conversation_context:
+            all_context += f"\n\n{current_conversation_context}"
         if recent_context:
             all_context += f"\n\n{recent_context}"
         if memory_context:
@@ -731,6 +757,19 @@ def get_lumi_response(message, user_id):
 {depth_guidance}
 
 請以露米的身份，用{persona_type}人格特色自然回應。注意：
+
+🔗 **最重要-對話連貫性要求**：
+- **仔細閱讀上方的「當前對話脈絡」**，了解前面的對話內容
+- **如果露米之前提出建議或問題，用戶的回應通常是針對那個建議**
+- **不要像重新開始對話一樣回應，要顯示記得前面說過的話**
+- **如果用戶的回應是對露米建議的延續，要直接回應並提供具體幫助**
+
+💬 **具體情境處理**：
+- 如果露米說「我們一起找解決辦法」→ 用戶問「怎麼解決」→ 直接提供解決方案，不要重新問問題
+- 如果用戶提供更多細節（如「褲子都緊緊的」）→ 這是對之前話題的補充，不是新話題
+- 如果用戶回應露米的問題 → 接續討論，不要重複問同樣的事
+
+🎭 **人格特色要求**：
 1. 直接回應用戶的當下問題和情緒深度
 2. 用適合的{persona_type}人格特色和情緒深度級別
 3. **healing模式特別要求**：根據{emotional_depth}級別調整語言深度和療癒技巧
@@ -740,14 +779,8 @@ def get_lumi_response(message, user_id):
    - 對話延續：用「嗯...」「是的...」「你剛才說的...」「那些話語背後...」
    - 避免在同一對話中重複相同開頭，要顯示真正在聆聽用戶的回應
 6. **保持情緒一致性**：如果用戶在療癒過程中，不要突然變得輕鬆搞笑
-7. 只在有真實上下文時才參考，否則專注當下對話
-8. 遵循格式要求：**每句話後必須換行**，用自然對話格式
-9. **healing模式標點要求**：適度使用「...」營造思考感，多用自然標點符號「。」「？」，不要每句都用「...」
-10. **healing模式回應連貫性**：
-    - 具體回應用戶剛才說的內容，不要用通用回應
-    - 引用用戶的關鍵詞彙，顯示真正在聆聽
-    - 例如用戶說「沒用」→ 不要再說「我感受到...」，而是「『沒用』這個想法...」
-11. **特別注意healing模式**：必須溫暖有深度，每句後換行，使用詩意靈魂語言但保持閱讀舒適度"""
+7. **遵循格式要求**：**每句話後必須換行**，用自然對話格式
+8. **healing模式標點要求**：適度使用「...」營造思考感，多用自然標點符號「。」「？」，不要每句都用「...」"""
 
         # 使用企業級Vertex AI或備用API
         if USE_VERTEX_AI:
