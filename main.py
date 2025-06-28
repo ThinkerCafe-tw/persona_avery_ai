@@ -169,8 +169,8 @@ class LumiVoiceSystem:
         self.elevenlabs_api_key = os.getenv('ELEVENLABS_API_KEY')
         self.base_url = "https://api.elevenlabs.io/v1"
         
-        # Stacy - Sweet and Cute Chinese 女聲
-        self.chinese_voice_id = "pqHfZKP75CvOlQylNhV4"
+        # Stacy - Sweet and Cute Chinese 女聲 (API確認的正確ID)
+        self.chinese_voice_id = "hkfHEbBvdQFNX4uWHqRF"
         
         if not self.elevenlabs_api_key or self.elevenlabs_api_key == "YOUR_ACTUAL_API_KEY_HERE":
             print("⚠️ 11Labs API Key未設定，語音功能暫時停用")
