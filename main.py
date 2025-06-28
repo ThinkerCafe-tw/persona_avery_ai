@@ -1132,6 +1132,29 @@ def webhook():
 
     return 'OK'
 
+def emergency_voice_fallback(transcribed_text):
+    """緊急語音回應，不依賴 Vertex AI"""
+    emergency_responses = {
+        "你好": "你好！我現在有點技術問題，但還是很開心聽到你的聲音！",
+        "hello": "Hello! 我的語音系統在維修中，但我聽到你了！",
+        "測試": "語音測試收到！我正在修復一些技術問題，請稍後再試～",
+        "心情": "我知道你想聊心情，但我現在腦子有點當機，用文字跟我說會更好喔！",
+        "問題": "我聽到你提問了，但現在回答功能有點故障，改用文字問我吧！",
+        "謝謝": "不客氣！雖然我現在有點狀況，但還是很感謝你耐心等待～",
+        "再見": "再見！希望下次見面時我已經完全康復了！",
+        "開啟語音": "語音功能已經開啟了，但現在有些技術問題，我正在修復中！",
+        "關閉語音": "好的，語音功能已關閉。不過現在建議你先用文字跟我聊～",
+        "不好": "我聽到你說不好，但現在無法深入聊療癒話題，請用文字告訴我詳細情況！",
+        "失落": "我感受到你的失落，但語音療癒功能暫時故障，請用文字跟我說你的感受～",
+    }
+    
+    text = transcribed_text.lower()
+    for keyword, response in emergency_responses.items():
+        if keyword in text:
+            return response
+    
+    return f"我聽到你說「{transcribed_text}」，但我的AI大腦暫時在維修中！請用文字跟我聊，我會立即回應的～"
+
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
     """處理文字訊息"""
@@ -1174,8 +1197,8 @@ def handle_audio_message(event):
                 process_text_message(user_id, transcribed_text, event.reply_token)
             except Exception as ai_error:
                 print(f"❌ AI處理語音轉文字失敗: {ai_error}")
-                # 如果AI處理失敗，至少告知用戶我們聽到了什麼
-                fallback_reply = f"我聽到你說「{transcribed_text}」，但我的大腦暫時當機了！請再試一次，或用文字跟我說～"
+                # 使用緊急語音回應系統
+                fallback_reply = emergency_voice_fallback(transcribed_text)
                 
                 line_bot_api.reply_message(
                     ReplyMessageRequest(
