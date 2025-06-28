@@ -10,10 +10,11 @@ from linebot.v3.messaging import (
     Configuration, ApiClient, MessagingApi, ReplyMessageRequest,
     TextMessage, AudioMessage
 )
-from linebot.v3.webhooks import MessageEvent, TextMessageContent
+from linebot.v3.webhooks import MessageEvent, TextMessageContent, AudioMessageContent
 from datetime import datetime
 import json
 from simple_memory import SimpleLumiMemory
+from speech_to_text import stt_system
 import requests
 import tempfile
 
@@ -1133,9 +1134,70 @@ def webhook():
 
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
+    """處理文字訊息"""
     user_id = event.source.user_id
     user_message = event.message.text
     
+    # 使用統一的文字處理邏輯
+    process_text_message(user_id, user_message, event.reply_token)
+
+@handler.add(MessageEvent, message=AudioMessageContent)
+def handle_audio_message(event):
+    """處理用戶語音訊息"""
+    user_id = event.source.user_id
+    
+    try:
+        print(f"🎤 收到用戶 {user_id[:8]}... 的語音訊息")
+        
+        if not stt_system.enabled:
+            print("⚠️ STT系統未啟用，無法處理語音")
+            error_reply = "抱歉，語音功能暫時無法使用，要不要試試用文字跟我聊呢？"
+            line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=error_reply)]
+                )
+            )
+            return
+        
+        # 下載語音文件
+        message_content = line_bot_api.get_message_content(event.message.id)
+        
+        # 語音轉文字
+        transcribed_text = stt_system.process_line_audio_message(message_content)
+        
+        if transcribed_text and transcribed_text.strip():
+            print(f"🎤➡️📝 語音轉文字成功: {transcribed_text}")
+            
+            # 將轉換後的文字當作普通文字訊息處理
+            process_text_message(user_id, transcribed_text, event.reply_token)
+            
+        else:
+            # 語音識別失敗的友善回應
+            print("❌ 語音識別失敗")
+            error_reply = stt_system.get_friendly_error_message()
+            line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=error_reply)]
+                )
+            )
+            
+    except Exception as e:
+        print(f"❌ 處理語音訊息錯誤: {e}")
+        error_reply = "語音處理出了點問題，要不要試試用文字跟我聊呢？"
+        try:
+            line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=error_reply)]
+                )
+            )
+        except:
+            pass
+
+def process_text_message(user_id, user_message, reply_token):
+    """處理文字訊息的核心邏輯（提取自 handle_message）"""
     try:
         print(f"🔄 處理用戶 {user_id[:8]}... 的訊息: {user_message[:30]}...")
         
@@ -1158,19 +1220,18 @@ def handle_message(event):
                     lumi_response=lumi_response,
                     emotion_tag=persona_type
                 )
-            except Exception as e:
-                print(f"記憶系統存儲錯誤: {e}")
-
+            except Exception as memory_error:
+                print(f"⚠️ 記憶儲存錯誤: {memory_error}")
+        
         # 準備回應訊息
         messages = [TextMessage(text=lumi_response)]
         
-        # 嘗試生成語音訊息（檢查用戶偏好）
-        user_wants_voice = user_voice_preferences.get(user_id, False)  # 預設關閉
-        if voice_system and voice_system.enabled and user_wants_voice:
+        # 檢查語音偏好
+        if user_voice_preferences.get(user_id, False) and voice_system and voice_system.enabled:
             try:
-                print(f"🎤 為 {persona_type} 模式生成語音...")
+                print(f"🎤 用戶已開啟語音，生成語音回應...")
                 
-                # 生成語音 (設定較短超時)
+                # 生成語音（設定較短超時）
                 audio_content = voice_system.generate_lumi_voice(lumi_response, persona_type)
                 
                 if audio_content:
@@ -1201,7 +1262,7 @@ def handle_message(event):
         # 發送回應（文字+語音或僅文字）
         line_bot_api.reply_message(
             ReplyMessageRequest(
-                reply_token=event.reply_token,
+                reply_token=reply_token,
                 messages=messages
             )
         )
@@ -1220,7 +1281,7 @@ def handle_message(event):
         try:
             line_bot_api.reply_message(
                 ReplyMessageRequest(
-                    reply_token=event.reply_token,
+                    reply_token=reply_token,
                     messages=[TextMessage(text=error_message)]
                 )
             )
