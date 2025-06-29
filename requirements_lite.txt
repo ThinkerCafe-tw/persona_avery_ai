@@ -1,0 +1,19 @@
+# 🚀 Cruz 架構 - 輕量化版本 (Railway 優化)
+Flask==2.3.3
+Werkzeug==2.3.7
+line-bot-sdk==3.9.0
+
+# 🧠 AI 對話 - Gemini API
+google-generativeai==0.8.0
+
+# 🔊 語音合成
+requests==2.31.0
+
+# 🛠️ 基礎工具
+python-dotenv==0.21.1
+gunicorn==20.1.0
+
+# 🎤 語音轉文字 - 暫時移除 Whisper，先確保基本功能
+# 如果基本部署成功，再逐步添加 Whisper
+# openai-whisper==20250625
+# torch>=2.0.0
