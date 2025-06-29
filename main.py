@@ -26,6 +26,11 @@ line_bot_api = MessagingApi(ApiClient(Configuration(
 )))
 handler = WebhookHandler(os.getenv('LINE_CHANNEL_SECRET'))
 
+# 🧠 強制載入記憶系統 (沒有記憶就崩潰)
+from simple_memory import SimpleLumiMemory
+memory = SimpleLumiMemory()
+print("🧠 記憶系統已強制啟動 - 無記憶不運行")
+
 # 🧠 嘗試載入 Gemini AI
 try:
     import google.generativeai as genai
@@ -44,31 +49,52 @@ except Exception as e:
     gemini_available = False
     print(f"❌ Gemini AI 初始化失敗: {e}")
 
-print("🚀 Lumi LINE Bot - 最小化版本")
+print("🚀 Lumi LINE Bot - 記憶強制版本")
 print("=" * 50)
-print(f"🧠 Gemini AI:        {'✅' if gemini_available else '❌'}")
+print(f"🧠 Gemini AI:        {'✅ 強制要求' if gemini_available else '❌ 系統崩潰'}")
+print(f"🧠 記憶系統:         ✅ 強制啟動")
 print(f"🎤 Whisper STT:      ⏸️ (暫時停用 - 避免映像大小限制)")
 print(f"💾 映像大小:         < 1GB (Railway 相容)")
 
-def get_ai_response(text):
+def get_ai_response(text, user_id=None):
     """
-    使用 Gemini AI 生成回應
+    使用 Gemini AI 生成回應 (帶記憶功能)
     """
     if not gemini_available:
         return "🤖 AI 系統正在初始化中，請稍後再試。"
     
     try:
-        # 個性化提示
-        prompt = f"""你是 Lumi，一個友善溫暖的 AI 助手。請用親切自然的語調回應用戶。
-
-用戶說：{text}
-
-請回應："""
+        # 構建個性化提示
+        prompt = f"""你是 Lumi，一個友善溫暖的 AI 助手。請用親切自然的語調回應用戶。"""
+        
+        # 強制使用記憶系統 (沒有用戶ID就報錯)
+        if not user_id:
+            raise ValueError("❌ 必須提供用戶ID才能使用記憶功能")
+        
+        # 獲取用戶記憶上下文
+        user_info = memory.get_user_info(user_id)
+        if user_info.get('name'):
+            prompt += f"\n\n你記得這位用戶叫 {user_info['name']}。"
+        
+        # 獲取最近的對話記憶
+        recent_memories = memory.get_recent_memories(user_id, limit=3)
+        if recent_memories:
+            prompt += f"\n\n最近的對話記憶："
+            for mem in recent_memories:
+                prompt += f"\n- 用戶說過：{mem.get('user_message', '')}"
+                prompt += f"\n- 你回應過：{mem.get('lumi_response', '')}"
+        
+        prompt += f"\n\n用戶現在說：{text}\n\n請回應："
         
         response = gemini_model.generate_content(prompt)
         
         if response and response.text:
-            return response.text.strip()
+            response_text = response.text.strip()
+            
+            # 強制儲存記憶 (失敗就報錯)
+            memory.add_interaction(user_id, text, response_text)
+            
+            return response_text
         else:
             return "抱歉，我現在無法回應。請稍後再試。"
             
@@ -101,8 +127,8 @@ def handle_text_message(event):
     
     print(f"📝 收到文字訊息: {user_text} (用戶: {user_id})")
     
-    # 獲取 AI 回應
-    response_text = get_ai_response(user_text)
+    # 獲取 AI 回應 (傳入用戶ID以支援記憶)
+    response_text = get_ai_response(user_text, user_id)
     
     # 回覆訊息
     line_bot_api.reply_message(
