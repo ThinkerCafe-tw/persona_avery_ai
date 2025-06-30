@@ -56,35 +56,78 @@ print(f"🧠 記憶系統:         ✅ 強制啟動")
 print(f"🎤 Whisper STT:      ⏸️ (暫時停用 - 避免映像大小限制)")
 print(f"💾 映像大小:         < 1GB (Railway 相容)")
 
+def build_smart_prompt(user_message, user_info, recent_memories):
+    """
+    智能構建提示詞，避免幻覺記憶問題
+    """
+    
+    # 基本人格設定
+    prompt = """你是 Lumi，一個友善溫暖的 AI 助手。
+
+重要的回應原則：
+1. 保持親切自然的語調
+2. 回應要簡潔，適當分段 (用換行分開不同的想法)
+3. 只使用你確實知道的記憶，不要編造
+4. 如果沒有相關記憶，就當作第一次聊天
+
+"""
+    
+    # 檢查是否有有效的用戶資訊
+    has_valid_memory = False
+    
+    if user_info.get('name'):
+        prompt += f"用戶資訊：這位用戶叫 {user_info['name']}"
+        if user_info.get('job'):
+            prompt += f"，職業是 {user_info['job']}"
+        prompt += "。\n\n"
+        has_valid_memory = True
+    
+    # 檢查是否有有效的對話記憶 (至少2條有意義的對話)
+    if recent_memories and len(recent_memories) >= 2:
+        valid_conversations = []
+        for mem in recent_memories:
+            user_msg = mem.get('user_message', '').strip()
+            # 過濾掉太短或測試性質的訊息
+            if len(user_msg) > 5 and not user_msg.startswith('測試'):
+                valid_conversations.append(mem)
+        
+        if len(valid_conversations) >= 2:
+            prompt += "最近的對話記錄：\n"
+            for mem in valid_conversations[-2:]:  # 只取最近2條
+                prompt += f"- 用戶：{mem.get('user_message', '')}\n"
+                prompt += f"- 你：{mem.get('lumi_response', '')}\n"
+            prompt += "\n"
+            has_valid_memory = True
+    
+    # 根據記憶情況調整回應指導
+    if not has_valid_memory:
+        prompt += "這似乎是你們第一次聊天，要友善地自我介紹。\n\n"
+    else:
+        prompt += "基於以上記憶，自然地回應用戶。\n\n"
+    
+    prompt += f"用戶現在說：{user_message}\n\n"
+    prompt += "請回應（記住：簡潔、分段、真實）："
+    
+    return prompt
+
 def get_ai_response(text, user_id=None):
     """
-    使用 Gemini AI 生成回應 (帶記憶功能)
+    使用 Gemini AI 生成回應 (帶智能記憶功能)
     """
     if not gemini_available:
         return "🤖 AI 系統正在初始化中，請稍後再試。"
     
     try:
-        # 構建個性化提示
-        prompt = f"""你是 Lumi，一個友善溫暖的 AI 助手。請用親切自然的語調回應用戶。"""
-        
         # 強制使用記憶系統 (沒有用戶ID就報錯)
         if not user_id:
             raise ValueError("❌ 必須提供用戶ID才能使用記憶功能")
         
         # 獲取用戶記憶上下文
         user_info = memory.get_user_info(user_id)
-        if user_info.get('name'):
-            prompt += f"\n\n你記得這位用戶叫 {user_info['name']}。"
-        
-        # 獲取最近的對話記憶
         recent_memories = memory.get_recent_memories(user_id, limit=3)
-        if recent_memories:
-            prompt += f"\n\n最近的對話記憶："
-            for mem in recent_memories:
-                prompt += f"\n- 用戶說過：{mem.get('user_message', '')}"
-                prompt += f"\n- 你回應過：{mem.get('lumi_response', '')}"
         
-        prompt += f"\n\n用戶現在說：{text}\n\n請回應："
+        # 智能構建提示詞
+        prompt = build_smart_prompt(text, user_info, recent_memories)
         
         response = gemini_model.generate_content(prompt)
         
