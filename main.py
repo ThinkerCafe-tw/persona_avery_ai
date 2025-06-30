@@ -31,6 +31,10 @@ from simple_memory import SimpleLumiMemory
 memory = SimpleLumiMemory()
 print("🧠 記憶系統已強制啟動 - 無記憶不運行")
 
+# 🎭 載入人格系統
+from persona_prompts import PersonaPrompts, PersonaMode
+print("🎭 六人格系統已載入 - 療癒/幽默/閨蜜/知性/導師/智者")
+
 # 🧠 嘗試載入 Gemini AI
 try:
     import google.generativeai as genai
@@ -49,94 +53,57 @@ except Exception as e:
     gemini_available = False
     print(f"❌ Gemini AI 初始化失敗: {e}")
 
-print("🚀 Lumi LINE Bot - 記憶強制版本")
+print("🚀 Lumi LINE Bot - 六人格記憶版本")
 print("=" * 50)
 print(f"🧠 Gemini AI:        {'✅ 強制要求' if gemini_available else '❌ 系統崩潰'}")
 print(f"🧠 記憶系統:         ✅ 強制啟動")
+print(f"🎭 六人格系統:       ✅ 療癒/幽默/閨蜜/知性/導師/智者")
 print(f"🎤 Whisper STT:      ⏸️ (暫時停用 - 避免映像大小限制)")
 print(f"💾 映像大小:         < 1GB (Railway 相容)")
 
-def build_smart_prompt(user_message, user_info, recent_memories):
+def build_smart_prompt(user_message, user_info, recent_memories, persona_mode=None):
     """
-    智能構建提示詞，避免幻覺記憶問題
+    智能構建提示詞，支援六種人格模式
     """
     
-    # 基本人格設定
-    prompt = """你是 Lumi，一個溫暖親切的 AI 朋友。
-
-你的個性特點：
-- 溫暖但不過度熱情
-- 真誠且有點俏皮
-- 會適度關心但不會過度擔心
-- 說話自然，像個真實的朋友
-- 對話是延續的，不要像要結束話題
-
-回應風格：
-- 避免使用「希望你一切安好」、「希望你今天過得很好」等結束語
-- 不要用客套的祝福語結尾
-- 多問問題或給回應空間，保持對話活躍
-- 用日常聊天的語氣，不是正式問候
-
-格式要求：
-- 每個不同想法都要換行分段
-- 不要用空格分段，要用真正的換行
-- 回應簡潔但溫暖
-- 可以用一些表情符號，但不要過多
-
-記憶使用原則：
-- 只使用你確實知道的記憶
-- 沒有記憶就當作第一次聊天
-- 不要編造任何對話內容
-
-"""
-    
-    # 檢查是否有有效的用戶資訊
-    has_valid_memory = False
-    
-    if user_info.get('name'):
-        prompt += f"用戶資訊：這位用戶叫 {user_info['name']}"
-        if user_info.get('job'):
-            prompt += f"，職業是 {user_info['job']}"
-        prompt += "。\n\n"
-        has_valid_memory = True
-    
-    # 檢查是否有有效的對話記憶 (至少2條有意義的對話)
-    if recent_memories and len(recent_memories) >= 2:
-        valid_conversations = []
-        for mem in recent_memories:
-            user_msg = mem.get('user_message', '').strip()
-            # 過濾掉太短或測試性質的訊息
-            if len(user_msg) > 5 and not user_msg.startswith('測試'):
-                valid_conversations.append(mem)
+    # 檢測或使用指定的人格模式
+    if not persona_mode:
+        # 自動檢測人格模式
+        persona_mode = PersonaPrompts.detect_persona_from_message(user_message)
         
-        if len(valid_conversations) >= 2:
-            prompt += "最近的對話記錄：\n"
-            for mem in valid_conversations[-2:]:  # 只取最近2條
-                prompt += f"- 用戶：{mem.get('user_message', '')}\n"
-                prompt += f"- 你：{mem.get('lumi_response', '')}\n"
-            prompt += "\n"
-            has_valid_memory = True
+        # 檢查是否為手動切換指令
+        switch_commands = PersonaPrompts.get_persona_switch_commands()
+        for cmd, mode in switch_commands.items():
+            if cmd in user_message:
+                persona_mode = mode
+                # 存儲用戶的人格偏好
+                if user_info:
+                    memory.set_user_info(user_info.get('user_id', 'default'), 'preferred_persona', mode.value)
+                break
     
-    # 根據記憶情況調整回應指導
-    if not has_valid_memory:
-        prompt += "這似乎是你們第一次聊天，要自然友善地介紹自己。\n\n"
-    else:
-        prompt += "基於以上記憶，像老朋友一樣自然地回應。\n\n"
+    # 如果沒有檢測到特定模式，使用用戶偏好或默認閨蜜模式
+    if not persona_mode:
+        if user_info and user_info.get('preferred_persona'):
+            try:
+                persona_mode = PersonaMode(user_info['preferred_persona'])
+            except ValueError:
+                persona_mode = PersonaMode.BESTIE  # 默認閨蜜模式
+        else:
+            persona_mode = PersonaMode.BESTIE  # 默認閨蜜模式
     
-    prompt += f"用戶現在說：{user_message}\n\n"
-    prompt += """請回應：
-- 用溫暖朋友的語氣，像朋友間日常聊天
-- 每個想法都要換行分段
-- 真實不編造
-- 適度關心但不說教
-- 不要用結束語，保持對話開放性
-- 可以問問題或給予回應空間"""
+    # 使用人格系統生成提示詞
+    prompt = PersonaPrompts.get_persona_prompt(
+        mode=persona_mode,
+        user_message=user_message,
+        user_info=user_info,
+        recent_memories=recent_memories
+    )
     
-    return prompt
+    return prompt, persona_mode
 
 def get_ai_response(text, user_id=None):
     """
-    使用 Gemini AI 生成回應 (帶智能記憶功能)
+    使用 Gemini AI 生成回應 (帶六人格智能記憶功能)
     """
     if not gemini_available:
         return "🤖 AI 系統正在初始化中，請稍後再試。"
@@ -148,18 +115,27 @@ def get_ai_response(text, user_id=None):
         
         # 獲取用戶記憶上下文
         user_info = memory.get_user_info(user_id)
+        user_info['user_id'] = user_id  # 確保 user_id 在 user_info 中
         recent_memories = memory.get_recent_memories(user_id, limit=3)
         
-        # 智能構建提示詞
-        prompt = build_smart_prompt(text, user_info, recent_memories)
+        # 智能構建提示詞 (支援六人格)
+        prompt, active_persona = build_smart_prompt(text, user_info, recent_memories)
+        
+        print(f"🎭 使用人格: {active_persona.value}")
         
         response = gemini_model.generate_content(prompt)
         
         if response and response.text:
             response_text = response.text.strip()
             
-            # 強制儲存記憶 (失敗就報錯)
-            memory.add_interaction(user_id, text, response_text)
+            # 儲存記憶，包含使用的人格模式
+            emotion_tag = active_persona.value.split('模式')[0] if '模式' in active_persona.value else active_persona.value
+            memory.add_interaction(user_id, text, response_text, emotion_tag)
+            
+            # 如果用戶手動切換人格，給予確認
+            switch_commands = PersonaPrompts.get_persona_switch_commands()
+            if any(cmd in text for cmd in switch_commands.keys()):
+                response_text = f"✨ 已切換到 {active_persona.value} ✨\n\n{response_text}"
             
             return response_text
         else:
@@ -238,14 +214,22 @@ def hello():
     """
     status = {
         "service": "Lumi LINE Bot",
-        "version": "Minimal Version v1.0",
-        "architecture": "Gemini AI Only (Railway Optimized)",
+        "version": "Six Persona Version v2.0",
+        "architecture": "Gemini AI + pgvector + Six Persona System",
         "status": "running",
         "features": {
             "text_chat": True,
             "gemini_ai": gemini_available,
+            "memory_system": memory.use_pgvector,
+            "persona_modes": ["療癒對話", "幽默聊天", "閨蜜模式", "知性深度", "心靈導師", "日記智者"],
             "voice_stt": False,
             "voice_tts": False
+        },
+        "persona_system": {
+            "available_modes": 6,
+            "auto_detection": True,
+            "manual_switching": True,
+            "default_mode": "閨蜜模式"
         },
         "deployment": {
             "image_size": "< 1GB",
