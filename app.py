@@ -56,7 +56,7 @@ def handle_message(event):
     user_message = event.message.text
     
     # Call your AI logic to get the response
-    reply_message = get_lumi_response(user_message)
+    reply_message = get_lumi_response(user_message, event.source.user_id)
 
     line_bot_api.reply_message(
         event.reply_token,
