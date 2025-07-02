@@ -13,7 +13,7 @@ from linebot.models import (
 )
 
 # Import your AI logic
-from ai_logic import get_ai_response
+from ai_logic import get_lumi_response
 
 # Load environment variables from .env file
 load_dotenv()
@@ -56,7 +56,7 @@ def handle_message(event):
     user_message = event.message.text
     
     # Call your AI logic to get the response
-    reply_message = get_ai_response(user_message)
+    reply_message = get_lumi_response(user_message)
 
     line_bot_api.reply_message(
         event.reply_token,
