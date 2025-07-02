@@ -1,9 +1,7 @@
-flask
-line-bot-sdk
-python-dotenv
-
-# For LINE Bot
-line-bot-sdk
-flask
-python-dotenv
-gunicorn
+Flask==3.1.1
+line-bot-sdk==3.17.1
+python-dotenv==1.1.1
+gunicorn==23.0.0
+google-generativeai==0.7.2
+vertexai
+PyGithub
