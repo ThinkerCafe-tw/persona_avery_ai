@@ -86,42 +86,34 @@ class SimpleLumiMemory:
 
         try:
             repo = self.github_client.get_user().get_repo(self.github_repo_name.split('/')[1])
-            contents = repo.get_contents(self.github_memory_path, ref=self.github_branch)
             
-            # 讀取本地記憶檔案內容
-            with open(self.memory_file, 'r', encoding='utf-8') as f:
-                local_memory_content = f.read()
+            # 獲取要備份的記憶內容
+            memory_content = json.dumps(self.user_memories, ensure_ascii=False, indent=2)
 
-            # 更新 GitHub 上的檔案
-            repo.update_file(
-                contents.path,
-                f"Update memory backup {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-                local_memory_content,
-                contents.sha,
-                branch=self.github_branch
-            )
-            print("SimpleLumiMemory: 記憶備份已更新到 GitHub。")
-            return True
-        except GithubException as e:
-            if e.status == 404: # 檔案不存在，則創建
-                try:
-                    repo = self.github_client.get_user().get_repo(self.github_repo_name.split('/')[1])
-                    with open(self.memory_file, 'r', encoding='utf-8') as f:
-                        local_memory_content = f.read()
+            try:
+                # 嘗試獲取現有檔案的內容和 SHA
+                contents = repo.get_contents(self.github_memory_path, ref=self.github_branch)
+                # 如果檔案存在，則更新它
+                repo.update_file(
+                    contents.path,
+                    f"Update memory backup {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                    memory_content,
+                    contents.sha,
+                    branch=self.github_branch
+                )
+                print("SimpleLumiMemory: 記憶備份已更新到 GitHub。")
+            except GithubException as e:
+                if e.status == 404: # 檔案不存在，則創建
                     repo.create_file(
                         self.github_memory_path,
                         f"Initial memory backup {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-                        local_memory_content,
+                        memory_content,
                         branch=self.github_branch
                     )
                     print("SimpleLumiMemory: 記憶備份已創建到 GitHub。")
-                    return True
-                except Exception as create_e:
-                    print(f"SimpleLumiMemory: 創建 GitHub 記憶備份失敗: {create_e}")
-                    return False
-            else:
-                print(f"SimpleLumiMemory: GitHub 備份失敗: {e}")
-                return False
+                else:
+                    raise # 重新拋出其他 GitHub 異常
+            return True
         except Exception as e:
             print(f"SimpleLumiMemory: 備份記憶時發生錯誤: {e}")
             return False
