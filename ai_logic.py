@@ -509,15 +509,3 @@ def get_lumi_response(message, user_id):
 
     # 最後無論如何都回傳
     return reply_message
-    
-    
-
-# Store the conversation before returning, regardless of the path taken
-    if memory_manager and reply_message: # Only store if reply_message is not empty
-        # Determine the correct persona_type for storage
-        # Re-analyze emotion for accurate storage, as persona_type might not be set in error cases
-        current_persona_type = analyze_emotion(message, user_id) 
-        memory_manager.store_conversation_memory(user_id, message, reply_message, current_persona_type)
-        store_conversation(user_id, message, reply_message)
-
-    return reply_message
