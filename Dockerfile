@@ -10,4 +10,4 @@ COPY . .
 ENV PORT 8080
 EXPOSE $PORT
 
-CMD ["python3", "-m", "gunicorn", "app:app", "--bind", "0.0.0.0:$(PORT)"]
+CMD python3 -m gunicorn app:app --bind 0.0.0.0:$PORT --log-level debug
