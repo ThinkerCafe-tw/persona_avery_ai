@@ -199,13 +199,14 @@ def generate_daily_summary(user_id):
                 # 切換到備用API
                 backup_model = genai.GenerativeModel('gemini-1.5-flash')
                 response = backup_model.generate_content(prompt)
-                return response.text.strip()
+                reply_message = response.text.strip() # Assign to reply_message
         else:
             response = model.generate_content(prompt)
-            return response.text.strip()
+            reply_message = response.text.strip()
     except Exception as e:
         print(f"生成日記摘要錯誤: {e}")
-        return f"""親愛的日記 ✨\n\n今天跟露米聊了很多有趣的事情！\n雖然現在日記生成功能有點小狀況，但我們的對話很棒 \n\n等功能修好後，我就能有完整的日記摘要了～\n期待明天跟露米繼續聊天！"""
+        reply_message = f"""親愛的日記 ✨\n\n今天跟露米聊了很多有趣的事情！\n雖然現在日記生成功能有點小狀況，但我們的對話很棒 \n\n等功能修好後，我就能有完整的日記摘要了～\n期待明天跟露米繼續聊天！"""
+    return reply_message
 
 def analyze_emotion(message, user_id=None):
     """分析用戶情緒，返回對應的人格類型（帶情緒狀態追踪）"""
@@ -511,13 +512,7 @@ def get_lumi_response(message, user_id):
         print(f"錯誤: {e}")
         reply_message = "嗨！我是Lumi，不好意思剛剛恍神了一下，可以再說一次嗎？"
     
-    # Store the conversation before returning, regardless of the path taken
-    if memory_manager and reply_message: # Only store if reply_message is not empty
-        # Determine the correct persona_type for storage
-        # Re-analyze emotion for accurate storage, as persona_type might not be set in error cases
-        current_persona_type = analyze_emotion(message, user_id) 
-        memory_manager.store_conversation_memory(user_id, message, reply_message, current_persona_type)
-        store_conversation(user_id, message, reply_message)
+    
 
 def get_memory_summary_response(user_id):
     """取得用戶記憶摘要回應"""
@@ -529,26 +524,27 @@ def get_memory_summary_response(user_id):
         emotion_patterns = memory_manager.get_user_emotion_patterns(user_id)
         
         if summary['total_memories'] == 0:
-            return "我們才剛開始認識呢！快跟我多聊聊，讓我更了解你吧 ✨"
+            reply_message = "我們才剛開始認識呢！快跟我多聊聊，讓我更了解你吧 ✨"
+        else:
+            dominant_emotion = emotion_patterns.get('dominant_emotion', 'friend')
+            emotion_names = {
+                'healing': '需要療癒',
+                'funny': '想要開心', 
+                'knowledge': '求知慾強',
+                'friend': '想要陪伴',
+                'soul': '深度探索',
+                'wisdom': '尋求智慧'
+            }
+            
+            reply_message = f"讓我看看我們的回憶～\n\n"
+            reply_message += f" 總共有 {summary['total_memories']} 段記憶\n"
+            reply_message += f" 最常的狀態是「{emotion_names.get(dominant_emotion, dominant_emotion)}」\n"
+            reply_message += f" 最近 {emotion_patterns.get('total_interactions', 0)} 次互動\n\n"
+            reply_message += f"感覺我們越來越熟了呢！你最想聊什麼類型的話題？"
         
-        dominant_emotion = emotion_patterns.get('dominant_emotion', 'friend')
-        emotion_names = {
-            'healing': '需要療癒',
-            'funny': '想要開心', 
-            'knowledge': '求知慾強',
-            'friend': '想要陪伴',
-            'soul': '深度探索',
-            'wisdom': '尋求智慧'
-        }
-        
-        response = f"讓我看看我們的回憶～\n\n"
-        response += f" 總共有 {summary['total_memories']} 段記憶\n"
-        response += f" 最常的狀態是「{emotion_names.get(dominant_emotion, dominant_emotion)}」\n"
-        response += f" 最近 {emotion_patterns.get('total_interactions', 0)} 次互動\n\n"
-        response += f"感覺我們越來越熟了呢！你最想聊什麼類型的話題？"
-        
-        return response
+        return reply_message
         
     except Exception as e:
         print(f"記憶摘要錯誤: {e}")
-        return "記憶有點模糊，但我記得我們聊過很多有趣的事情！"
+        reply_message = "記憶有點模糊，但我記得我們聊過很多有趣的事情！"
+        return reply_message
