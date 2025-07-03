@@ -519,7 +519,7 @@ def get_sync_status_response(user_id):
         
         response = ""
         
-        if not status.get('github_token_configured') or not status.get('github_repo_configured'):            response = "Lumi 的記憶備份功能還沒設定好耶！如果你想讓 Lumi 記住我們聊過的所有事，請告訴你的開發者，幫我設定好 GitHub 帳號喔！"        elif not status.get('repo_accessible'):            response = "Lumi 已經連上 GitHub 囉！不過，好像沒辦法找到我們的記憶庫，可能是倉庫名稱或權限有問題耶... 可能是設定上需要再檢查一下喔！"        elif not status.get('branch_exists'):            response = "Lumi 已經連上 GitHub 囉！不過，好像沒辦法找到我們的記憶分支，可能是分支名稱有問題耶... 可能是設定上需要再檢查一下喔！"        else:            response = "Lumi 已經連上 GitHub 囉！我們的記憶庫一切正常！"            if status.get('last_sync') and status['last_sync'] != "記憶檔案不存在":                response += f"\n上次備份是在 {status['last_sync']} 喔！"            else:                response += "\n不過還沒有備份過任何對話喔！"                        response += "\n\n如果你想備份，跟我說「備份記憶」；想恢復，就說「恢復記憶」吧！"
+        if not status.get('github_token_configured') or not status.get('github_repo_configured'):            response = "Lumi 的記憶備份功能還沒設定好耶！如果你想讓 Lumi 記住我們聊過的所有事，請告訴你的開發者，幫我設定好 GitHub 帳號喔！"        elif not status.get('repo_accessible'):            response = "Lumi 已經連上 GitHub 囉！不過，好像沒辦法找到我們的記憶庫，可能是倉庫名稱或權限有問題耶... 可能是設定上需要再檢查一下喔！"        elif not status.get('branch_exists'):            response = "Lumi 已經連上 GitHub 囉！不過，好像沒辦法找到我們的記憶分支，可能是分支名稱有問題耶... 可能是設定上需要再檢查一下喔！"        else:            response = "Lumi 已經連上 GitHub 囉！我們的記憶庫一切正常！"            if status.get('last_sync') and status['last_sync'] != "記憶檔案不存在":                response += f"\n上次備份是在 {status['last_sync']} 喔！"            else:                response += "\n不過還沒有備份過任何對話喔！"                        response += "\n\n如果你想備份，跟我說『備份記憶』；想恢復，就說『恢復記憶』吧！"
             
         return response
             
