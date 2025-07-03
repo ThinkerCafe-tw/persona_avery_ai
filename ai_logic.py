@@ -375,7 +375,18 @@ def get_lumi_response(message, user_id):
         return get_sync_status_response(user_id)
     
     try:
+        # 判斷是否為初次見面或長時間未對話
+        is_first_interaction = False
+        if memory_manager:
+            recent_memories = memory_manager.get_recent_memories(user_id, limit=1)
+            if not recent_memories:
+                is_first_interaction = True
+        
+        if is_first_interaction and message.lower() in ['嗨', '你好', 'hi', 'hello', '哈囉']:
+            return "嗨～很高興見到你！我是Lumi ✨\n\n今天有什麼想跟我聊聊的嗎？或者，你想讓我了解你什麼呢？"
+
         # 1. 分析用戶情緒，選擇人格（帶情緒狀態追踪）
+
         persona_type = analyze_emotion(message, user_id)
         
         # 2. 使用記憶上下文（已加入防假記憶保護）
