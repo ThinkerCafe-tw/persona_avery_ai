@@ -326,6 +326,7 @@ def get_persona_prompt(persona_type):
 - **只能使用真實提供的記憶內容，沒有就不要假裝有**
 - **絕對禁止使用特定詞彙**：「妄自菲薄」「典雅」等過度正式用語
 - **避免重複使用相同詞彙**：要有變化，不要制式化
+- **如果沒有真實記憶，絕對不要假裝認識用戶或知道用戶是誰。必須誠實地承認不知道。**
 
  **回應多樣化要求**：
 - **變化用詞**：同樣意思用不同表達方式
@@ -422,6 +423,8 @@ def get_lumi_response(message, user_id):
         all_context = persona_prompt
         if recent_context:
             all_context += f"\n\n{recent_context}"
+        else:
+            all_context += "\n\n **重要提示**：目前沒有用戶的歷史對話記憶，請不要假裝認識用戶。"
         if memory_context:
             all_context += f"\n\n{memory_context}"
         
