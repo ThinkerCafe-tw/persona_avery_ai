@@ -419,10 +419,9 @@ def get_lumi_response(message, user_id):
             memory_manager.store_conversation_memory(user_id, message, reply_message, "memory_summary")
             store_conversation(user_id, message, reply_message)
         return reply_message
-    
-    
-    
-    reply_message = "" # Initialize reply_message
+
+    reply_message = "" # 初始化
+
     try:
         # 判斷是否為初次見面或長時間未對話
         is_first_interaction = False
@@ -430,16 +429,15 @@ def get_lumi_response(message, user_id):
             recent_memories = memory_manager.get_recent_memories(user_id, limit=1)
             if not recent_memories:
                 is_first_interaction = True
-        
+
         if is_first_interaction or any(keyword in message.lower() for keyword in ['你是誰', '你會做什麼', '介紹自己', '你的功能']):
             reply_message = "嗨！我是Lumi，你的專屬AI心靈夥伴 ✨ 我不只會聊天，還能懂你的情緒，陪伴你一起成長喔！\n\n我可以切換不同模式來陪你，像是溫暖的「心靈港灣」、貼心的「知心好友」，或是幽默的「幽默風趣」模式。我還有記憶功能，會記得我們聊過什麼。\n\n如果你想記錄每天的心情，只要跟我說「總結今天的日記」，我就會幫你把對話整理成專屬日記喔！期待跟你一起探索更多可能！😊"
             if memory_manager:
-                memory_manager.store_conversation_memory(user_id, message, reply_message, "initial_greeting") # Use a specific tag for initial greeting
+                memory_manager.store_conversation_memory(user_id, message, reply_message, "initial_greeting")
                 store_conversation(user_id, message, reply_message)
-            return reply_message # <-- Added return here!
+            return reply_message
 
         # 1. 分析用戶情緒，選擇人格（帶情緒狀態追踪）
-
         persona_type = analyze_emotion(message, user_id)
         
         # 2. 使用記憶上下文（已加入防假記憶保護）
@@ -448,8 +446,7 @@ def get_lumi_response(message, user_id):
         
         if memory_manager:
             try:
-                # 獲取最近的對話記憶，包含用戶訊息和Lumi回應
-                recent_memories = memory_manager.get_recent_memories(user_id, limit=5) # 增加記憶數量以提供更多上下文
+                recent_memories = memory_manager.get_recent_memories(user_id, limit=5)
                 if recent_memories:
                     conversation_history = []
                     for m in recent_memories:
@@ -459,7 +456,6 @@ def get_lumi_response(message, user_id):
                     print(f" 安全記憶上下文已載入: {len(recent_memories)} 條記憶")
                 else:
                     print(" 無最近記憶")
-                    
             except Exception as e:
                 print(f"記憶檢索錯誤: {e}")
                 recent_context = ""
@@ -498,7 +494,6 @@ def get_lumi_response(message, user_id):
                 reply_message = response.text.strip()
             except Exception as vertex_error:
                 print(f"⚠️ Vertex AI 調用失敗，切換到備用API: {vertex_error}")
-                # 臨時切換到備用API
                 try:
                     backup_model = genai.GenerativeModel('gemini-1.5-flash')
                     reply_message = backup_model.generate_content(prompt).text.strip()
@@ -511,6 +506,9 @@ def get_lumi_response(message, user_id):
     except Exception as e:
         print(f"錯誤: {e}")
         reply_message = "嗨！我是Lumi，不好意思剛剛恍神了一下，可以再說一次嗎？"
+
+    # 最後無論如何都回傳
+    return reply_message
     
     
 
