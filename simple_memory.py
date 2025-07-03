@@ -1,27 +1,13 @@
 import os
 import json
 from datetime import datetime
-from github import Github, GithubException
+
 
 class SimpleLumiMemory:
     def __init__(self):
         self.memory_file = os.path.join(os.getcwd(), 'lumi_memory.json')
         self.user_memories = self._load_memories_from_file()
         print("SimpleLumiMemory: 記憶系統已初始化")
-
-        # GitHub 配置
-        self.github_token = os.getenv('GITHUB_TOKEN')
-        self.github_repo_name = os.getenv('GITHUB_REPO')
-        self.github_branch = os.getenv('GITHUB_BRANCH', 'main') # 預設為 main 分支
-        self.github_memory_path = os.getenv('GITHUB_MEMORY_PATH', 'memory/user_memories.json')
-
-        self.github_client = None
-        if self.github_token and self.github_repo_name:
-            try:
-                self.github_client = Github(self.github_token)
-                print("SimpleLumiMemory: GitHub 客戶端已初始化")
-            except Exception as e:
-                print(f"SimpleLumiMemory: GitHub 客戶端初始化失敗: {e}")
 
     def _load_memories_from_file(self):
         if os.path.exists(self.memory_file):
@@ -78,108 +64,3 @@ class SimpleLumiMemory:
             'dominant_emotion': dominant_emotion,
             'total_interactions': len(memories)
         }
-
-    def create_daily_backup(self):
-        if not self.github_client or not self.github_repo_name:
-            print("SimpleLumiMemory: GitHub 配置不完整，無法備份。")
-            return False
-
-        try:
-            repo = self.github_client.get_user().get_repo(self.github_repo_name.split('/')[1])
-            
-            # 獲取要備份的記憶內容
-            memory_content = json.dumps(self.user_memories, ensure_ascii=False, indent=2)
-
-            try:
-                # 嘗試獲取現有檔案的內容和 SHA
-                contents = repo.get_contents(self.github_memory_path, ref=self.github_branch)
-                # 如果檔案存在，則更新它
-                repo.update_file(
-                    contents.path,
-                    f"Update memory backup {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-                    memory_content,
-                    contents.sha,
-                    branch=self.github_branch
-                )
-                print("SimpleLumiMemory: 記憶備份已更新到 GitHub。")
-            except GithubException as e:
-                if e.status == 404: # 檔案不存在，則創建
-                    repo.create_file(
-                        self.github_memory_path,
-                        f"Initial memory backup {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-                        memory_content,
-                        branch=self.github_branch
-                    )
-                    print("SimpleLumiMemory: 記憶備份已創建到 GitHub。")
-                else:
-                    raise # 重新拋出其他 GitHub 異常
-            return True
-        except Exception as e:
-            print(f"SimpleLumiMemory: 備份記憶時發生錯誤: {e}")
-            return False
-
-    def load_user_memory_from_github(self, user_id):
-        if not self.github_client or not self.github_repo_name:
-            print("SimpleLumiMemory: GitHub 配置不完整，無法恢復記憶。")
-            return False
-
-        try:
-            repo = self.github_client.get_user().get_repo(self.github_repo_name.split('/')[1])
-            contents = repo.get_contents(self.github_memory_path, ref=self.github_branch)
-            github_memory_content = contents.decoded_content.decode('utf-8')
-            
-            # 載入 GitHub 上的記憶並覆蓋本地記憶
-            self.user_memories = json.loads(github_memory_content)
-            self._save_memories_to_file() # 同步到本地檔案
-            print("SimpleLumiMemory: 記憶已從 GitHub 恢復。")
-            return True
-        except GithubException as e:
-            if e.status == 404:
-                print("SimpleLumiMemory: GitHub 上沒有找到記憶備份檔案。")
-            else:
-                print(f"SimpleLumiMemory: 從 GitHub 恢復記憶失敗: {e}")
-            return False
-        except Exception as e:
-            print(f"SimpleLumiMemory: 恢復記憶時發生錯誤: {e}")
-            return False
-
-    def get_sync_status(self):
-        status = {
-            'github_token_configured': bool(self.github_token),
-            'github_repo_configured': bool(self.github_repo_name),
-            'repo_accessible': False,
-            'branch_exists': False,
-            'last_sync': None
-        }
-
-        if self.github_client and self.github_repo_name:
-            try:
-                repo = self.github_client.get_user().get_repo(self.github_repo_name.split('/')[1])
-                status['repo_accessible'] = True
-                try:
-                    repo.get_branch(self.github_branch)
-                    status['branch_exists'] = True
-                    try:
-                        contents = repo.get_contents(self.github_memory_path, ref=self.github_branch)
-                        status['last_sync'] = datetime.fromisoformat(json.loads(contents.decoded_content.decode('utf-8')).get('last_sync_timestamp', 'N/A')).strftime('%Y-%m-%d %H:%M:%S')
-                    except GithubException as e:
-                        if e.status == 404:
-                            status['last_sync'] = "記憶檔案不存在"
-                        else:
-                            print(f"SimpleLumiMemory: 獲取記憶檔案狀態失敗: {e}")
-                    except Exception as e:
-                        print(f"SimpleLumiMemory: 解析記憶檔案時間戳失敗: {e}")
-                except GithubException as e:
-                    if e.status == 404:
-                        status['branch_exists'] = False
-                        print(f"SimpleLumiMemory: 分支 {self.github_branch} 不存在。")
-                    else:
-                        print(f"SimpleLumiMemory: 檢查分支失敗: {e}")
-            except GithubException as e:
-                if e.status == 404:
-                    print("SimpleLumiMemory: GitHub 倉庫不存在或無法訪問。")
-                else:
-                    print(f"SimpleLumiMemory: 檢查 GitHub 倉庫失敗: {e}")
-            except Exception as e:
-                print(f"SimpleLumiMemory: 檢查 GitHub 連接時發生錯誤: {e}")
-        return status
