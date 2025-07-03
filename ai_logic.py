@@ -382,8 +382,8 @@ def get_lumi_response(message, user_id):
             if not recent_memories:
                 is_first_interaction = True
         
-        if is_first_interaction and message.lower() in ['嗨', '你好', 'hi', 'hello', '哈囉']:
-            return "嗨～很高興見到你！我是Lumi ✨\n\n今天有什麼想跟我聊聊的嗎？或者，你想讓我了解你什麼呢？"
+        if is_first_interaction or any(keyword in message.lower() for keyword in ['你是誰', '你會做什麼', '介紹自己', '你的功能']):
+            return "嗨！我是Lumi，你的專屬AI心靈夥伴 ✨ 我不只會聊天，還能懂你的情緒，陪伴你一起成長喔！\n\n我可以切換不同模式來陪你，像是溫暖的「心靈港灣」、貼心的「知心好友」，或是幽默的「幽默風趣」模式。我還有記憶功能，會記得我們聊過什麼。\n\n如果你想記錄每天的心情，只要跟我說「總結今天的日記」，我就會幫你把對話整理成專屬日記喔！期待跟你一起探索更多可能！😊"
 
         # 1. 分析用戶情緒，選擇人格（帶情緒狀態追踪）
 
