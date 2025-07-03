@@ -369,10 +369,7 @@ def get_lumi_response(message, user_id):
     if any(keyword in message for keyword in memory_keywords):
         return get_memory_summary_response(user_id)
     
-    # 檢查是否為同步相關指令
-    sync_keywords = ['同步狀態', '備份記憶', '恢復記憶']
-    if any(keyword in message for keyword in sync_keywords):
-        return get_sync_status_response(user_id)
+    
     
     try:
         # 判斷是否為初次見面或長時間未對話
@@ -508,21 +505,3 @@ def get_memory_summary_response(user_id):
     except Exception as e:
         print(f"記憶摘要錯誤: {e}")
         return "記憶有點模糊，但我記得我們聊過很多有趣的事情！"
-
-def get_sync_status_response(user_id):
-    """取得同步狀態回應"""
-    if not memory_manager:
-        return "欸～我的記憶系統還在升級中，不過我們的對話我都有記在心裡啦！"
-    
-    try:
-        status = memory_manager.get_sync_status()
-        
-        response = ""
-        
-        if not status.get('github_token_configured') or not status.get('github_repo_configured'):            response = "Lumi 的記憶備份功能還沒設定好耶！如果你想讓 Lumi 記住我們聊過的所有事，請告訴你的開發者，幫我設定好 GitHub 帳號喔！"        elif not status.get('repo_accessible'):            response = "Lumi 已經連上 GitHub 囉！不過，好像沒辦法找到我們的記憶庫，可能是倉庫名稱或權限有問題耶... 可能是設定上需要再檢查一下喔！"        elif not status.get('branch_exists'):            response = "Lumi 已經連上 GitHub 囉！不過，好像沒辦法找到我們的記憶分支，可能是分支名稱有問題耶... 可能是設定上需要再檢查一下喔！"        else:            response = "Lumi 已經連上 GitHub 囉！我們的記憶庫一切正常！"            if status.get('last_sync') and status['last_sync'] != "記憶檔案不存在":                response += f"\n上次備份是在 {status['last_sync']} 喔！"            else:                response += "\n不過還沒有備份過任何對話喔！"                        response += "\n\n如果你想備份，跟我說『備份記憶』；想恢復，就說『恢復記憶』吧！"
-            
-        return response
-            
-    except Exception as e:
-        print(f"同步狀態錯誤: {e}")
-        return "同步狀態檢查遇到問題，但本地記憶運行正常！"
