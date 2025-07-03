@@ -462,16 +462,21 @@ def get_lumi_response(message, user_id):
         
         # 3. 獲取對應人格的提示詞
         persona_prompt = get_persona_prompt(persona_type)
+        print(f"DEBUG: persona_prompt after get_persona_prompt: {persona_prompt}") # 新增日誌
         
         # 4. 生成回應（整合所有上下文）
-        all_context = persona_prompt
+        # 確保 all_context 從字串初始化，並處理 persona_prompt 可能為 None 的情況
+        all_context = str(persona_prompt) if persona_prompt is not None else "" 
+        
         if recent_context:
-            all_context += f"\n\n{recent_context}"
+            all_context += f"\n\n{str(recent_context)}" # 確保 recent_context 也是字串
         else:
             all_context += "\n\n **重要提示**：目前沒有用戶的歷史對話記憶，請不要假裝認識用戶。"
-        if memory_context:
-            all_context += f"\n\n{memory_context}"
         
+        # memory_context 似乎沒有被使用，如果不需要可以移除
+        # if memory_context: 
+        #     all_context += f"\n\n{str(memory_context)}" 
+
         # 檢查情緒狀態連續性
         emotion_continuity_note = ""
         if user_id in user_emotion_states:
