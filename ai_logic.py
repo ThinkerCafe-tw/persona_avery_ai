@@ -193,7 +193,7 @@ def generate_daily_summary(user_id):
         if USE_VERTEX_AI:
             try:
                 response = model.generate_content(prompt)
-                return response.text.strip()
+                reply_message = response.text.strip()
             except Exception as vertex_error:
                 print(f"⚠️ Vertex AI日記生成失敗，切換到備用API: {vertex_error}")
                 # 切換到備用API
@@ -362,15 +362,24 @@ def get_lumi_response(message, user_id):
     # 檢查是否為日記摘要指令
     summary_keywords = ['總結今天', '今日摘要', '生成日記', '今天的日記', '幫我總結', '今日總結', '今天聊了什麼', '總結一下我今天的日記', '幫我總結一下', '可以幫我總結']
     if any(keyword in message for keyword in summary_keywords):
-        return generate_daily_summary(user_id)
+        reply_message = generate_daily_summary(user_id)
+        if memory_manager:
+            memory_manager.store_conversation_memory(user_id, message, reply_message, "daily_summary")
+            store_conversation(user_id, message, reply_message)
+        return reply_message
     
     # 檢查是否為記憶相關指令
     memory_keywords = ['記憶摘要', '我的記憶', '我們聊過什麼', '你還記得嗎', '之前的對話']
     if any(keyword in message for keyword in memory_keywords):
-        return get_memory_summary_response(user_id)
+        reply_message = get_memory_summary_response(user_id)
+        if memory_manager:
+            memory_manager.store_conversation_memory(user_id, message, reply_message, "memory_summary")
+            store_conversation(user_id, message, reply_message)
+        return reply_message
     
     
     
+    reply_message = "" # Initialize reply_message
     try:
         # 判斷是否為初次見面或長時間未對話
         is_first_interaction = False
@@ -380,7 +389,11 @@ def get_lumi_response(message, user_id):
                 is_first_interaction = True
         
         if is_first_interaction or any(keyword in message.lower() for keyword in ['你是誰', '你會做什麼', '介紹自己', '你的功能']):
-            return "嗨！我是Lumi，你的專屬AI心靈夥伴 ✨ 我不只會聊天，還能懂你的情緒，陪伴你一起成長喔！\n\n我可以切換不同模式來陪你，像是溫暖的「心靈港灣」、貼心的「知心好友」，或是幽默的「幽默風趣」模式。我還有記憶功能，會記得我們聊過什麼。\n\n如果你想記錄每天的心情，只要跟我說「總結今天的日記」，我就會幫你把對話整理成專屬日記喔！期待跟你一起探索更多可能！😊"
+            reply_message = "嗨！我是Lumi，你的專屬AI心靈夥伴 ✨ 我不只會聊天，還能懂你的情緒，陪伴你一起成長喔！\n\n我可以切換不同模式來陪你，像是溫暖的「心靈港灣」、貼心的「知心好友」，或是幽默的「幽默風趣」模式。我還有記憶功能，會記得我們聊過什麼。\n\n如果你想記錄每天的心情，只要跟我說「總結今天的日記」，我就會幫你把對話整理成專屬日記喔！期待跟你一起探索更多可能！😊"
+            if memory_manager:
+                memory_manager.store_conversation_memory(user_id, message, reply_message, "initial_greeting") # Use a specific tag for initial greeting
+                store_conversation(user_id, message, reply_message)
+            return reply_message # <-- Added return here!
 
         # 1. 分析用戶情緒，選擇人格（帶情緒狀態追踪）
 
@@ -455,22 +468,42 @@ def get_lumi_response(message, user_id):
         if USE_VERTEX_AI:
             try:
                 response = model.generate_content(prompt)
-                return response.text.strip()
+                reply_message = response.text.strip()
             except Exception as vertex_error:
                 print(f"⚠️ Vertex AI 調用失敗，切換到備用API: {vertex_error}")
                 # 臨時切換到備用API
                 try:
                     backup_model = genai.GenerativeModel('gemini-1.5-flash')
-                    return backup_model.generate_content(prompt).text.strip()
+                    reply_message = backup_model.generate_content(prompt).text.strip()
                 except Exception as backup_error:
                     print(f"❌ 備用API也失敗: {backup_error}")
-                    return "抱歉，我現在有點忙，稍後再試試吧！"
+                    reply_message = "抱歉，我現在有點忙，稍後再試試吧！"
         else:
             response = model.generate_content(prompt)
-            return response.text.strip()
+            reply_message = response.text.strip()
     except Exception as e:
         print(f"錯誤: {e}")
-        return "嗨！我是Lumi，不好意思剛剛恍神了一下，可以再說一次嗎？"
+        reply_message = "嗨！我是Lumi，不好意思剛剛恍神了一下，可以再說一次嗎？"
+    
+    # Store the conversation before returning, regardless of the path taken
+    if memory_manager and reply_message: # Only store if reply_message is not empty
+        # Determine the correct persona_type for storage
+        # Re-analyze emotion for accurate storage, as persona_type might not be set in error cases
+        current_persona_type = analyze_emotion(message, user_id) 
+        memory_manager.store_conversation_memory(user_id, message, reply_message, current_persona_type)
+        store_conversation(user_id, message, reply_message)
+
+    return reply_message
+        
+    # Store the conversation before returning, regardless of the path taken
+    if memory_manager and reply_message: # Only store if reply_message is not empty
+        # Determine the correct persona_type for storage
+        # Re-analyze emotion for accurate storage, as persona_type might not be set in error cases
+        current_persona_type = analyze_emotion(message, user_id) 
+        memory_manager.store_conversation_memory(user_id, message, reply_message, current_persona_type)
+        store_conversation(user_id, message, reply_message)
+
+    return reply_message
 
 def get_memory_summary_response(user_id):
     """取得用戶記憶摘要回應"""
