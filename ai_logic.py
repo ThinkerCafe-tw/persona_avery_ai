@@ -147,27 +147,21 @@ except Exception as e:
     print(f"記憶系統初始化失敗: {e}")
     memory_manager = None
 
-# 用戶對話記憶存儲 (向量資料庫為主，記憶體為備用)
-user_conversations = {}
 
 # 用戶情緒狀態追踪（防止不當模式跳轉）
 user_emotion_states = {}
 
 def store_conversation(user_id, message, response):
-    """儲存用戶對話記錄"""
+    """儲存用戶對話記錄到 markdown 檔案"""
     today = datetime.now().strftime('%Y-%m-%d')
-    
-    if user_id not in user_conversations:
-        user_conversations[user_id] = {}
-    
-    if today not in user_conversations[user_id]:
-        user_conversations[user_id][today] = []
-    
-    user_conversations[user_id][today].append({
-        'timestamp': datetime.now().strftime('%H:%M:%S'),
-        'user_message': message,
-        'lumi_response': response
-    })
+    log_dir = os.path.join(os.getcwd(), 'memory')
+    os.makedirs(log_dir, exist_ok=True)
+    log_path = os.path.join(log_dir, 'conversation_log.md')
+
+    log_entry = f"## {today}\n\n**使用者：** {message}\n\n**Lumi：** {response}\n\n"
+
+    with open(log_path, 'a', encoding='utf-8') as f:
+        f.write(log_entry)
 
 def generate_daily_summary(user_id):
     """生成當日對話摘要日記"""
@@ -421,6 +415,22 @@ def get_lumi_response(message, user_id):
         return reply_message
 
     reply_message = "" # 初始化
+    # 新增：每次正常互動都記憶對話到 user_conversations
+    if 'user_conversations' not in globals():
+        global user_conversations
+        user_conversations = {}
+ 
+    if user_id not in user_conversations:
+        user_conversations[user_id] = {}
+
+    today = datetime.now().strftime('%Y-%m-%d')
+    if today not in user_conversations[user_id]:
+        user_conversations[user_id][today] = []
+
+    user_conversations[user_id][today].append({
+        "user_message": message,
+        "lumi_response": reply_message
+    })
 
     try:
         # 判斷是否為初次見面或長時間未對話
@@ -441,7 +451,6 @@ def get_lumi_response(message, user_id):
         persona_type = analyze_emotion(message, user_id)
         
         # 2. 使用記憶上下文（已加入防假記憶保護）
-        memory_context = ""
         recent_context = ""
         
         if memory_manager:
@@ -465,17 +474,13 @@ def get_lumi_response(message, user_id):
         print(f"DEBUG: persona_prompt after get_persona_prompt: {persona_prompt}") # 新增日誌
         
         # 4. 生成回應（整合所有上下文）
-        # 確保 all_context 從字串初始化，並處理 persona_prompt 可能為 None 的情況
-        all_context = str(persona_prompt) if persona_prompt is not None else ""
+        # all_context 預設初始化方式簡化
+        all_context = str(persona_prompt or "")
 
         if recent_context:
             all_context = (all_context or "") + f"\n\n{str(recent_context)}"
         else:
             all_context = (all_context or "") + "\n\n **重要提示**：目前沒有用戶的歷史對話記憶，請不要假裝認識用戶。"
-        
-        # memory_context 似乎沒有被使用，如果不需要可以移除
-        # if memory_context: 
-        #     all_context += f"\n\n{str(memory_context)}" 
 
         # 檢查情緒狀態連續性
         emotion_continuity_note = ""
@@ -511,6 +516,27 @@ def get_lumi_response(message, user_id):
     except Exception as e:
         print(f"錯誤: {e}")
         reply_message = "嗨！我是Lumi，不好意思剛剛恍神了一下，可以再說一次嗎？"
+
+    # 新增：每次正常互動都記憶對話到 user_conversations
+    if 'user_conversations' not in globals():
+        global user_conversations
+        user_conversations = {}
+
+    if user_id not in user_conversations:
+        user_conversations[user_id] = {}
+
+    today = datetime.now().strftime('%Y-%m-%d')
+    if today not in user_conversations[user_id]:
+        user_conversations[user_id][today] = []
+
+    user_conversations[user_id][today].append({
+        "user_message": message,
+        "lumi_response": reply_message
+    })
+    # 新增：對每次正常互動都記憶對話
+    if memory_manager:
+        memory_manager.store_conversation_memory(user_id, message, reply_message, persona_type)
+        store_conversation(user_id, message, reply_message)
 
     # 最後無論如何都回傳
     return reply_message
