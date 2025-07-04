@@ -5,7 +5,9 @@ from datetime import datetime
 
 class SimpleLumiMemory:
     def __init__(self):
-        self.memory_file = os.path.join(os.getcwd(), 'lumi_memory.json')
+        persistent_dir = os.getenv('PERSISTENT_STORAGE_PATH', '/app/data')
+        os.makedirs(persistent_dir, exist_ok=True)
+        self.memory_file = os.path.join(persistent_dir, 'lumi_memory.json')
         self.user_memories = self._load_memories_from_file()
         print("SimpleLumiMemory: 記憶系統已初始化")
 
