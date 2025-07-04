@@ -119,7 +119,7 @@ try:
         )
         
         # 使用企業級Vertex AI模型
-        model = VertexModel('gemini-1.0-pro')
+        model = VertexModel('gemini-2.0-flash')
         print(f"✅ 企業級Vertex AI已初始化 (Project: {vertex_project})")
         USE_VERTEX_AI = True
     else:
@@ -130,7 +130,7 @@ except Exception as e:
     # 備用方案：使用原有的API（降低使用頻率）
     try:
         genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-        model = genai.GenerativeModel('gemini-1.0-pro')
+        model = genai.GenerativeModel('gemini-2.0-flash')
         print(" 備用Gemini API已初始化")
         print(" 提示：正在使用備用API，每日配額有限")
         USE_VERTEX_AI = False
@@ -499,7 +499,7 @@ def get_lumi_response(message, user_id):
             except Exception as vertex_error:
                 print(f"⚠️ Vertex AI 調用失敗，切換到備用API: {vertex_error}")
                 try:
-                    backup_model = genai.GenerativeModel('gemini-1.0-pro')
+                    backup_model = genai.GenerativeModel('gemini-2.0-flash')
                     reply_message = backup_model.generate_content(prompt).text.strip()
                 except Exception as backup_error:
                     print(f"❌ 備用API也失敗: {backup_error}")
