@@ -120,6 +120,8 @@ try:
         
         # 使用企業級Vertex AI模型
         model = VertexModel('gemini-2.0-flash')
+        # 初始化嵌入模型
+        embedding_model = VertexModel('text-embedding-004')
         print(f"✅ 企業級Vertex AI已初始化 (Project: {vertex_project})")
         USE_VERTEX_AI = True
     else:
@@ -141,7 +143,7 @@ except Exception as e:
 
 # 初始化簡化記憶系統
 try:
-    memory_manager = SimpleLumiMemory()
+    memory_manager = SimpleLumiMemory(embedding_model)
     print(" 簡化記憶系統已啟動")
 except Exception as e:
     print(f"記憶系統初始化失敗: {e}")

@@ -4,6 +4,8 @@ from datetime import datetime
 import psycopg2 # 新增
 from pgvector.psycopg2 import register_vector # 新增
 import google.generativeai as genai # 新增
+import vertexai
+from vertexai.preview.generative_models import GenerativeModel as VertexModel
 import numpy as np # 新增
 
 # 載入環境變數 (確保在 app.py 或其他入口點已載入)
@@ -11,7 +13,7 @@ import numpy as np # 新增
 # load_dotenv()
 
 class SimpleLumiMemory:
-    def __init__(self):
+    def __init__(self, embedding_model_instance):
         # 移除檔案記憶相關的初始化
         # persistent_dir = os.getenv('PERSISTENT_STORAGE_PATH', '/app/data')
         # os.makedirs(persistent_dir, exist_ok=True)
@@ -30,14 +32,11 @@ class SimpleLumiMemory:
             # 這裡可以選擇是否要讓應用程式崩潰，或者使用備用記憶方案
             # 目前先讓它打印錯誤，如果沒有資料庫連接，記憶功能將失效
 
-        # 初始化嵌入模型
-        try:
-            # <<<<<<< 修正：不再需要初始化 GenerativeModel
-            genai.configure(api_key=os.getenv('GEMINI_API_KEY')) # 確保 GEMINI_API_KEY 已設定
-            # self.embedding_model = genai.GenerativeModel('models/text-embedding-004')
-            print("SimpleLumiMemory: Gemini API 已配置")
-        except Exception as e:
-            print(f"SimpleLumiMemory: Gemini API 配置失敗: {e}")
+        self.embedding_model = embedding_model_instance
+        if self.embedding_model:
+            print("SimpleLumiMemory: 嵌入模型已成功傳入")
+        else:
+            print("SimpleLumiMemory: 警告：未傳入嵌入模型實例")
 
 
     def _initialize_db(self):
@@ -79,9 +78,9 @@ class SimpleLumiMemory:
             if not text.strip():
                 return np.zeros(768).tolist() # 返回一個零向量
 
-            # 使用 genai.embed_content 進行嵌入
-            result = genai.embed_content(
-                model="models/text-embedding-004",
+            # 使用 Vertex AI 嵌入模型進行嵌入
+            result = self.embedding_model.embed_content(
+                model="text-embedding-004", # Vertex AI 模型名稱
                 content=text,
                 task_type="RETRIEVAL_DOCUMENT"
             )
