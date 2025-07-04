@@ -22,8 +22,8 @@ class SimpleLumiMemory:
         try:
             print("嘗試連接資料庫，DATABASE_URL =", os.getenv('DATABASE_URL'))            
             self.conn = psycopg2.connect(os.getenv('DATABASE_URL'))
-            register_vector(self.conn) # 註冊 pgvector 類型
-            self._initialize_db()
+            self._initialize_db() # <<<<<<< 修正：先初始化DB
+            register_vector(self.conn) # <<<<<<< 修正：後註冊vector
             print("SimpleLumiMemory: PGVector 記憶系統已初始化並連接資料庫")
         except Exception as e:
             print(f"SimpleLumiMemory: 連接 PGVector 資料庫失敗: {e}")
@@ -32,12 +32,12 @@ class SimpleLumiMemory:
 
         # 初始化嵌入模型
         try:
+            # <<<<<<< 修正：不再需要初始化 GenerativeModel
             genai.configure(api_key=os.getenv('GEMINI_API_KEY')) # 確保 GEMINI_API_KEY 已設定
-            self.embedding_model = genai.GenerativeModel('models/text-embedding-004')
-            print("SimpleLumiMemory: 嵌入模型已初始化")
+            # self.embedding_model = genai.GenerativeModel('models/text-embedding-004')
+            print("SimpleLumiMemory: Gemini API 已配置")
         except Exception as e:
-            print(f"SimpleLumiMemory: 嵌入模型初始化失敗: {e}")
-            self.embedding_model = None
+            print(f"SimpleLumiMemory: Gemini API 配置失敗: {e}")
 
 
     def _initialize_db(self):
@@ -69,9 +69,7 @@ class SimpleLumiMemory:
     #     ...
 
     def _get_embedding(self, text):
-        if not self.embedding_model:
-            print("警告: 嵌入模型未初始化，無法生成嵌入。")
-            return None
+        # <<<<<<< 修正：直接使用 genai.embed_content
         try:
             # 確保輸入是字串
             if not isinstance(text, str):
@@ -81,12 +79,14 @@ class SimpleLumiMemory:
             if not text.strip():
                 return np.zeros(768).tolist() # 返回一個零向量
 
-            response = self.embedding_model.embed_content(
+            # 使用 genai.embed_content 進行嵌入
+            result = genai.embed_content(
                 model="models/text-embedding-004",
-                content=text
+                content=text,
+                task_type="RETRIEVAL_DOCUMENT"
             )
-            # 確保返回的是 list，以便於 psycopg2 處理
-            return response.embedding.tolist()
+            # 確保返回的是 list
+            return result['embedding']
         except Exception as e:
             print(f"生成嵌入失敗: {e}")
             return None
