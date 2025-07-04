@@ -54,15 +54,15 @@ def callback():
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_message = event.message.text
-    
-    # Call your AI logic to get the response
-    reply_message = get_lumi_response(user_message, event.source.user_id)
+    print("✅ 收到 LINE 訊息:", user_message) 
 
+    reply_message = get_lumi_response(user_message, event.source.user_id)
+    print("🤖 Lumi 回覆內容:", reply_message)
     line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(text=reply_message)
     )
-
+    
 if __name__ == "__main__":
     port = int(os.getenv('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
