@@ -4,3 +4,4 @@ python-dotenv==1.1.1
 gunicorn==23.0.0
 google-generativeai==0.7.2
 vertexai
+psycopg2-binary

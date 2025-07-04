@@ -147,6 +147,35 @@ class SimpleLumiMemory:
             print(f"SimpleLumiMemory: 從 PGVector 檢索記憶失敗: {e}")
             return []
 
+    def get_daily_memories(self, user_id, date_str):
+        if not self.conn:
+            print("警告: 資料庫連接未建立，無法檢索每日記憶。")
+            return []
+        
+        try:
+            with self.conn.cursor() as cur:
+                # 查詢特定用戶在特定日期的所有對話記錄
+                cur.execute("""
+                    SELECT user_message, lumi_response, emotion_tag, timestamp
+                    FROM lumi_memories
+                    WHERE user_id = %s AND DATE(timestamp) = %s
+                    ORDER BY timestamp ASC;
+                """, (user_id, date_str))
+                rows = cur.fetchall()
+                
+                memories = []
+                for row in rows:
+                    memories.append({
+                        'user_message': row[0],
+                        'lumi_response': row[1],
+                        'emotion_tag': row[2],
+                        'timestamp': row[3].isoformat()
+                    })
+                return memories
+        except Exception as e:
+            print(f"SimpleLumiMemory: 從 PGVector 檢索每日記憶失敗: {e}")
+            return []
+
     def get_memory_summary(self, user_id):
         if not self.conn:
             print("警告: 資料庫連接未建立，無法獲取記憶摘要。")
