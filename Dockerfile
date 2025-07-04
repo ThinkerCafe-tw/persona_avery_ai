@@ -18,4 +18,4 @@ COPY . .
 
 EXPOSE $PORT
 
-CMD [ "/bin/sh", "-c", "python3 -m gunicorn app:app --bind 0.0.0.0:$PORT --log-level debug" ]
+CMD [ "/bin/sh", "-c", "echo "---> Starting on PORT: $PORT" && python3 -m gunicorn app:app --bind 0.0.0.0:$PORT --log-level debug" ]
