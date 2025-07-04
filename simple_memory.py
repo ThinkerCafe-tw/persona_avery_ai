@@ -20,6 +20,7 @@ class SimpleLumiMemory:
 
         self.conn = None
         try:
+            print("嘗試連接資料庫，DATABASE_URL =", os.getenv('DATABASE_URL'))            
             self.conn = psycopg2.connect(os.getenv('DATABASE_URL'))
             register_vector(self.conn) # 註冊 pgvector 類型
             self._initialize_db()
