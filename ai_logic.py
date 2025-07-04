@@ -171,10 +171,13 @@ def generate_daily_summary(user_id):
     """生成當日對話摘要日記"""
     today = datetime.now().strftime('%Y-%m-%d')
     
-    if not memory_manager or user_id not in memory_manager.user_memories or today not in memory_manager.user_memories[user_id]:
+    if not memory_manager:
         return "欸～今天我們還沒有聊天呢！快跟我分享你的一天吧 ✨"
     
-    conversations = memory_manager.user_memories[user_id][today]
+    conversations = memory_manager.get_daily_memories(user_id, today)
+    
+    if not conversations:
+        return "欸～今天我們還沒有聊天呢！快跟我分享你的一天吧 ✨"
     
     # 整理所有對話內容
     all_messages = []
