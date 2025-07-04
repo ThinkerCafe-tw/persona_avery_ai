@@ -151,26 +151,16 @@ except Exception as e:
 # 用戶情緒狀態追踪（防止不當模式跳轉）
 user_emotion_states = {}
 
-def store_conversation(user_id, message, response):
-    """儲存用戶對話記錄到 markdown 檔案"""
-    today = datetime.now().strftime('%Y-%m-%d')
-    log_dir = os.path.join(os.getcwd(), 'memory')
-    os.makedirs(log_dir, exist_ok=True)
-    log_path = os.path.join(log_dir, 'conversation_log.md')
 
-    log_entry = f"## {today}\n\n**使用者：** {message}\n\n**Lumi：** {response}\n\n"
-
-    with open(log_path, 'a', encoding='utf-8') as f:
-        f.write(log_entry)
 
 def generate_daily_summary(user_id):
     """生成當日對話摘要日記"""
     today = datetime.now().strftime('%Y-%m-%d')
     
-    if user_id not in user_conversations or today not in user_conversations[user_id]:
+    if not memory_manager or user_id not in memory_manager.user_memories or today not in memory_manager.user_memories[user_id]:
         return "欸～今天我們還沒有聊天呢！快跟我分享你的一天吧 ✨"
     
-    conversations = user_conversations[user_id][today]
+    conversations = memory_manager.user_memories[user_id][today]
     
     # 整理所有對話內容
     all_messages = []
@@ -402,7 +392,6 @@ def get_lumi_response(message, user_id):
         reply_message = generate_daily_summary(user_id)
         if memory_manager:
             memory_manager.store_conversation_memory(user_id, message, reply_message, "daily_summary")
-            store_conversation(user_id, message, reply_message)
         return reply_message
     
     # 檢查是否為記憶相關指令
@@ -411,26 +400,10 @@ def get_lumi_response(message, user_id):
         reply_message = get_memory_summary_response(user_id)
         if memory_manager:
             memory_manager.store_conversation_memory(user_id, message, reply_message, "memory_summary")
-            store_conversation(user_id, message, reply_message)
         return reply_message
 
     reply_message = "" # 初始化
-    # 新增：每次正常互動都記憶對話到 user_conversations
-    if 'user_conversations' not in globals():
-        global user_conversations
-        user_conversations = {}
- 
-    if user_id not in user_conversations:
-        user_conversations[user_id] = {}
-
-    today = datetime.now().strftime('%Y-%m-%d')
-    if today not in user_conversations[user_id]:
-        user_conversations[user_id][today] = []
-
-    user_conversations[user_id][today].append({
-        "user_message": message,
-        "lumi_response": reply_message
-    })
+    
 
     try:
         # 判斷是否為初次見面或長時間未對話
@@ -443,8 +416,7 @@ def get_lumi_response(message, user_id):
         if is_first_interaction or any(keyword in message.lower() for keyword in ['你是誰', '你會做什麼', '介紹自己', '你的功能']):
             reply_message = "嗨！我是Lumi，你的專屬AI心靈夥伴 ✨ 我不只會聊天，還能懂你的情緒，陪伴你一起成長喔！\n\n我可以切換不同模式來陪你，像是溫暖的「心靈港灣」、貼心的「知心好友」，或是幽默的「幽默風趣」模式。我還有記憶功能，會記得我們聊過什麼。\n\n如果你想記錄每天的心情，只要跟我說「總結今天的日記」，我就會幫你把對話整理成專屬日記喔！期待跟你一起探索更多可能！😊"
             if memory_manager:
-                memory_manager.store_conversation_memory(user_id, message, reply_message, "initial_greeting")
-                store_conversation(user_id, message, reply_message)
+                
             return reply_message
 
         # 1. 分析用戶情緒，選擇人格（帶情緒狀態追踪）
@@ -517,26 +489,7 @@ def get_lumi_response(message, user_id):
         print(f"錯誤: {e}")
         reply_message = "嗨！我是Lumi，不好意思剛剛恍神了一下，可以再說一次嗎？"
 
-    # 新增：每次正常互動都記憶對話到 user_conversations
-    if 'user_conversations' not in globals():
-        global user_conversations
-        user_conversations = {}
-
-    if user_id not in user_conversations:
-        user_conversations[user_id] = {}
-
-    today = datetime.now().strftime('%Y-%m-%d')
-    if today not in user_conversations[user_id]:
-        user_conversations[user_id][today] = []
-
-    user_conversations[user_id][today].append({
-        "user_message": message,
-        "lumi_response": reply_message
-    })
-    # 新增：對每次正常互動都記憶對話
-    if memory_manager:
-        memory_manager.store_conversation_memory(user_id, message, reply_message, persona_type)
-        store_conversation(user_id, message, reply_message)
+    
 
     # 最後無論如何都回傳
     return reply_message
