@@ -466,12 +466,12 @@ def get_lumi_response(message, user_id):
         
         # 4. 生成回應（整合所有上下文）
         # 確保 all_context 從字串初始化，並處理 persona_prompt 可能為 None 的情況
-        all_context = str(persona_prompt) if persona_prompt is not None else "" 
-        
+        all_context = str(persona_prompt) if persona_prompt is not None else ""
+
         if recent_context:
-            all_context += f"\n\n{str(recent_context)}" # 確保 recent_context 也是字串
+            all_context = (all_context or "") + f"\n\n{str(recent_context)}"
         else:
-            all_context += "\n\n **重要提示**：目前沒有用戶的歷史對話記憶，請不要假裝認識用戶。"
+            all_context = (all_context or "") + "\n\n **重要提示**：目前沒有用戶的歷史對話記憶，請不要假裝認識用戶。"
         
         # memory_context 似乎沒有被使用，如果不需要可以移除
         # if memory_context: 
