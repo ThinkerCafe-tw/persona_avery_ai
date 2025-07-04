@@ -385,6 +385,22 @@ def get_persona_prompt(persona_type):
 """
 }
 
+def get_memory_summary_response(user_id):
+    if not memory_manager:
+        return "抱歉，記憶系統目前無法使用。我無法回顧我們的對話。"
+
+    memories = memory_manager.get_recent_memories(user_id, limit=10) # Get more recent memories for a better summary
+    if not memories:
+        return "目前我還沒有關於你的任何記憶。我們是第一次聊天嗎？"
+
+    summary_text = "好的，讓我想想我們聊過什麼...\n"
+    for i, m in enumerate(memories):
+        summary_text += f"{i+1}. 你說：{m.get('user_message', '')}\n"
+        summary_text += f"   我說：{m.get('lumi_response', '')}\n"
+    
+    summary_text += "\n這些是我們最近的對話。還有什麼你想回顧的嗎？"
+    return summary_text
+
 def get_lumi_response(message, user_id):
     # 檢查是否為日記摘要指令
     summary_keywords = ['總結今天', '今日摘要', '生成日記', '今天的日記', '幫我總結', '今日總結', '今天聊了什麼', '總結一下我今天的日記', '幫我總結一下', '可以幫我總結']
