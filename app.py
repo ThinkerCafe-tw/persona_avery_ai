@@ -19,6 +19,7 @@ from ai_logic import get_lumi_response
 load_dotenv()
 
 app = Flask(__name__)
+print("✅ Flask app 已初始化，準備等待 Gunicorn 啟動")
 
 # Get Channel Secret and Channel Access Token from environment variables
 CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')
@@ -63,6 +64,3 @@ def handle_message(event):
         TextSendMessage(text=reply_message)
     )
     
-if __name__ == "__main__":
-    port = int(os.getenv('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
