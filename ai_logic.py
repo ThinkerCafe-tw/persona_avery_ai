@@ -384,6 +384,7 @@ def get_persona_prompt(persona_type):
 - 內容包含：今天發生的主要事件、我的情緒和感受、與AI互動的收穫、對未來的期待或反思。
 """
 }
+    return personas.get(persona_type)
 
 def get_memory_summary_response(user_id):
     if not memory_manager:
