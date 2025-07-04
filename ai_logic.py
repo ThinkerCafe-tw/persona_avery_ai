@@ -186,7 +186,7 @@ def generate_daily_summary(user_id):
             except Exception as vertex_error:
                 print(f"⚠️ Vertex AI日記生成失敗，切換到備用API: {vertex_error}")
                 # 切換到備用API
-                backup_model = genai.GenerativeModel('gemini-1.0-pro')
+                model = genai.GenerativeModel('gemini-2.0-flash')
                 response = backup_model.generate_content(prompt)
                 reply_message = response.text.strip() # Assign to reply_message
         else:
