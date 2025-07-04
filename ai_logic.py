@@ -151,19 +151,7 @@ except Exception as e:
 # 用戶情緒狀態追踪（防止不當模式跳轉）
 user_emotion_states = {}
 
-def append_to_conversation_log(user_id, user_message, lumi_response, emotion_tag=None):
-    today = datetime.now().strftime('%Y-%m-%d')
-    timestamp = datetime.now().isoformat(timespec='seconds')
-    memory_dir = os.path.join(os.getcwd(), "memory")
-    os.makedirs(memory_dir, exist_ok=True)
-    file_path = os.path.join(memory_dir, "conversation_log.md")
-    
-    with open(file_path, "a", encoding="utf-8") as f:
-        f.write(f"\n### {timestamp} - {user_id}\n")
-        f.write(f"- **User**: {user_message}\n")
-        f.write(f"- **Lumi**: {lumi_response}\n")
-        if emotion_tag:
-            f.write(f"- **Emotion Tag**: {emotion_tag}\n")
+
 
 
 
@@ -525,6 +513,6 @@ def get_lumi_response(message, user_id):
 
     
 
-    append_to_conversation_log(user_id, message, reply_message, persona_type)
+    
     # 最後無論如何都回傳
     return reply_message
