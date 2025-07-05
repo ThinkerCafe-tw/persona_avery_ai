@@ -136,17 +136,66 @@ class SimpleLumiMemory:
             except:
                 return False
 
+    def store_user_profile_name(self, user_id, name):
+        """將 user_id 與 name 存成 profile 記憶"""
+        print(f"[LOG] 儲存 profile: user_id={user_id}, name={name}")
+        if not self._ensure_connection():
+            print("❌ [LOG] 無法儲存 profile：Railway pgvector 服務連接失敗")
+            return
+        embedding = self._get_embedding(name)
+        if embedding is None:
+            print("❌ [LOG] 無法生成嵌入，profile 未儲存")
+            return
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO lumi_memories (user_id, user_message, lumi_response, emotion_tag, embedding)
+                    VALUES (%s, %s, %s, %s, %s);
+                """, (user_id, f"我是{name}", f"記住用戶名稱：{name}", 'profile', embedding))
+                self.conn.commit()
+            print(f"✅ [LOG] 已儲存 user_id={user_id} 的 profile name={name}")
+        except Exception as e:
+            print(f"❌ [LOG] 儲存 profile 失敗: {e}")
+            self._ensure_connection()
+
+    def get_user_profile_name(self, user_id):
+        """查詢 user_id 最新的 profile name"""
+        if not self._ensure_connection():
+            return None
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    SELECT user_message FROM lumi_memories
+                    WHERE user_id = %s AND emotion_tag = 'profile'
+                    ORDER BY timestamp DESC LIMIT 1;
+                """, (user_id,))
+                row = cur.fetchone()
+                if row:
+                    # user_message 可能是「我是XXX」或「我叫XXX」
+                    msg = row[0]
+                    for prefix in ["我是", "我叫", "我的名字是"]:
+                        if msg.startswith(prefix):
+                            return msg[len(prefix):].strip()
+                    return msg
+        except Exception as e:
+            print(f"❌ [LOG] 查詢 profile name 失敗: {e}")
+        return None
+
     def store_conversation_memory(self, user_id, user_message, lumi_response, emotion_tag=None):
         print(f"[LOG] 儲存記憶: user_id={user_id}, user_message={user_message}, lumi_response={lumi_response}, emotion_tag={emotion_tag}")
+        # 自動偵測 profile 記憶
+        for prefix in ["我是", "我叫", "我的名字是"]:
+            if isinstance(user_message, str) and user_message.strip().startswith(prefix):
+                name = user_message.strip()[len(prefix):].strip()
+                if name:
+                    self.store_user_profile_name(user_id, name)
         if not self._ensure_connection():
             print("❌ [LOG] 無法儲存記憶：Railway pgvector 服務連接失敗")
             return
-
         embedding = self._get_embedding(user_message)
         if embedding is None:
             print("❌ [LOG] 無法生成嵌入，記憶未儲存")
             return
-
         try:
             with self.conn.cursor() as cur:
                 cur.execute("""
@@ -157,7 +206,6 @@ class SimpleLumiMemory:
             print(f"✅ [LOG] 已儲存用戶 {user_id[:8]}... 的對話記憶到 Railway pgvector")
         except Exception as e:
             print(f"❌ [LOG] 儲存記憶到 Railway pgvector 失敗: {e}")
-            # 嘗試重新連接
             self._ensure_connection()
 
     def get_recent_memories(self, user_id, limit=5): # 這裡的 limit 應該是從 PGVector 檢索的數量

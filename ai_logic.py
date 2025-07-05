@@ -5,6 +5,7 @@ from datetime import datetime
 import json
 from simple_memory import SimpleLumiMemory
 from prompt_variations import prompt_variations
+import random
 
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -59,6 +60,26 @@ def get_persona_prompt(persona_type):
     return base_info
 
 def get_lumi_response(message, user_id, persona_type=None):
+    # 日期/時間問句判斷
+    date_keywords = ["今天幾號", "今天日期", "現在幾點", "今天是什麼時候", "現在時間"]
+    if any(kw in message for kw in date_keywords):
+        now = datetime.datetime.now()
+        if "幾點" in message or "時間" in message:
+            return f"現在時間是 {now.strftime('%H:%M:%S')}"
+        else:
+            return f"今天日期是 {now.strftime('%Y-%m-%d')}"
+    # 查詢 profile name
+    profile_name = None
+    if hasattr(memory_manager, 'get_user_profile_name'):
+        profile_name = memory_manager.get_user_profile_name(user_id)
+    # 多樣化誠實回應模板
+    honest_templates = [
+        "很高興認識你！如果你願意，可以告訴我你的名字，我會記住喔。",
+        "你好！目前我只能記住這次對話內容，下次還是要你提醒我喔。",
+        "我現在還不認識你，如果你想讓我記住，可以跟我說『我是XXX』！",
+        "抱歉，我還沒有你的個人資訊，但很期待認識你！",
+        "我目前記憶功能有限，只能記錄當下這次對話。"
+    ]
     prompt = get_persona_prompt(persona_type) or ""
     memory_context = ""
     if memory_manager:
@@ -85,7 +106,14 @@ def get_lumi_response(message, user_id, persona_type=None):
             print(f"記憶檢索失敗: {e}")
     prompt += memory_context
     prompt += f"\n\n用戶訊息：{message}"
+    prompt += "\n\n嚴格規定：你只能根據上方記憶內容回應，沒有就誠實說不知道。禁止假裝認識用戶、禁止使用『又見到你』『再次見到你』等語句，除非你真的有記憶。不要編造用戶資訊，也不要假裝記得用戶。"
     print(f"[LOG] 最終送給 openai 的 prompt:\n{prompt}")
+    # 處理「你記得我是誰嗎」等問題
+    if any(kw in message for kw in ["你記得我是誰", "你知道我是誰", "我是誰"]):
+        if profile_name:
+            return f"你是{profile_name}，我有記住你的名字喔！很高興再次和你聊天。"
+        else:
+            return random.choice(honest_templates)
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
