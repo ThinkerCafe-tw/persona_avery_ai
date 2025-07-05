@@ -1,23 +1,9 @@
-# Web 框架
-Flask==3.1.1
-gunicorn==23.0.0
-
-# LINE Bot SDK
-line-bot-sdk==3.17.1
-
-# 環境變數管理
-python-dotenv==1.1.1
-
-# Google AI 服務
-google-generativeai==0.7.2
-google-cloud-aiplatform==1.38.1
-
-# Railway pgvector 資料庫
-psycopg2-binary==2.9.7
-pgvector==0.2.3
-
-# 數值計算
-numpy==1.24.3
-
-# 其他工具
-requests==2.31.0
+Flask
+line-bot-sdk
+python-dotenv
+google-generativeai
+google-cloud-aiplatform
+psycopg2-binary
+pgvector
+numpy
+requests

@@ -166,14 +166,38 @@ python memory_test.py
 
 ## 🚨 常見問題
 
-### 1. pgvector 連接失敗
+### 1. Docker 構建失敗
+
+**症狀**：看到 "pip install" 失敗錯誤
+
+**解決方案**：
+1. **使用簡化版本**：
+   ```bash
+   # 重命名簡化版本
+   mv Dockerfile.simple Dockerfile
+   mv requirements-test.txt requirements.txt
+   ```
+
+2. **檢查依賴相容性**：
+   - 移除版本限制
+   - 逐步添加依賴
+   - 使用最新的 Python 3.11
+
+3. **清理並重新部署**：
+   ```bash
+   git add .
+   git commit -m "修復 Docker 構建問題"
+   git push origin main
+   ```
+
+### 2. pgvector 連接失敗
 
 **症狀**：看到 "Railway pgvector 連接失敗" 錯誤
 
 **解決方案**：
-- 確認 Railway 專案中已添加 PostgreSQL 服務
+- 確認 Railway 專案中已添加 pgvector 服務
 - 檢查 DATABASE_URL 環境變數是否正確
-- 確認 PostgreSQL 服務狀態為 "Running"
+- 確認 pgvector 服務狀態為 "Running"
 
 ### 2. 向量嵌入失敗
 
