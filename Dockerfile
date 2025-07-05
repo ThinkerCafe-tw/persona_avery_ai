@@ -35,11 +35,11 @@ RUN useradd --create-home --shell /bin/bash app && \
 USER app
 
 # 暴露端口
-EXPOSE 5000
+EXPOSE 8080
 
 # 健康檢查
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
+    CMD curl -f http://localhost:8080/health || exit 1
 
 # 啟動應用程式
-CMD ["gunicorn", "-b", "0.0.0.0:8080", "app:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:${PORT:-8080}", "app:app"]
