@@ -3,12 +3,9 @@ from dotenv import load_dotenv
 from flask import Flask, request, abort
 
 # 使用 LINE Bot SDK v3 正確導入方式
-from linebot.v3.messaging import MessagingApi
-from linebot.v3.webhook import WebhookHandler
+from linebot.v3.messaging import MessagingApi, TextMessage
+from linebot.v3.webhook import WebhookHandler, MessageEvent
 from linebot.v3.exceptions import InvalidSignatureError
-from linebot.v3.messaging import (
-    MessageEvent, TextMessage, TextSendMessage,
-)
 print("✅ 使用 LINE Bot SDK v3 正確導入方式")
 
 # Import your AI logic
@@ -60,11 +57,11 @@ def handle_message(event):
     print("🤖 Lumi 回覆內容:", reply_message)
     
     # 使用 v3 API 發送回覆
-    from linebot.v3.messaging import ReplyMessageRequest, TextMessage as V3TextMessage
+    from linebot.v3.messaging import ReplyMessageRequest
     
     request = ReplyMessageRequest(
         reply_token=event.reply_token,
-        messages=[V3TextMessage(text=reply_message)]
+        messages=[TextMessage(text=reply_message)]
     )
     line_bot_api.reply_message(request)
 
