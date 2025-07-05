@@ -1,9 +1,8 @@
 Flask
 line-bot-sdk==3.5.0
 python-dotenv
-google-generativeai
-google-cloud-aiplatform>=1.40.0
 psycopg2-binary
 pgvector
 numpy
 requests
+openai
