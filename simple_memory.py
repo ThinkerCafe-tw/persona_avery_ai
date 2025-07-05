@@ -12,11 +12,8 @@ class SimpleLumiMemory:
     def __init__(self):
         self.conn = None
         self._initialize_railway_pgvector()
-        
-        if self.embedding_model:
-            print("SimpleLumiMemory: 嵌入模型已成功傳入")
-        else:
-            print("SimpleLumiMemory: 警告：未傳入嵌入模型實例")
+        # 移除 self.embedding_model 相關程式碼
+        print("SimpleLumiMemory: 初始化完成")
 
     def _initialize_railway_pgvector(self):
         """初始化 Railway pgvector 服務連接"""
