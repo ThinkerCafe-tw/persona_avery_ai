@@ -9,7 +9,12 @@ from linebot.v3.exceptions import InvalidSignatureError
 print("✅ 使用 LINE Bot SDK v3 正確導入方式")
 
 # Import your AI logic
-from ai_logic import get_lumi_response
+try:
+    from ai_logic import get_lumi_response
+    print("✅ AI 邏輯模組導入成功")
+except Exception as e:
+    print(f"⚠️ AI 邏輯模組導入失敗: {e}")
+    get_lumi_response = None
 
 # Load environment variables from .env file
 load_dotenv()
@@ -53,8 +58,15 @@ def handle_message(event):
     user_message = event.message.text
     print("✅ 收到 LINE 訊息:", user_message) 
 
-    reply_message = get_lumi_response(user_message, event.source.user_id)
-    print("🤖 Lumi 回覆內容:", reply_message)
+    if get_lumi_response:
+        try:
+            reply_message = get_lumi_response(user_message, event.source.user_id)
+            print("🤖 Lumi 回覆內容:", reply_message)
+        except Exception as e:
+            print(f"❌ AI 回應生成失敗: {e}")
+            reply_message = "抱歉，我現在有點忙，稍後再試試吧！"
+    else:
+        reply_message = "抱歉，AI 系統正在初始化中，請稍後再試！"
     
     # 使用 v3 API 發送回覆
     from linebot.v3.messaging import ReplyMessageRequest
@@ -68,12 +80,19 @@ def handle_message(event):
 @app.route("/health", methods=['GET'])
 def health_check():
     """Railway 健康檢查端點"""
-    return {
-        "status": "healthy",
-        "service": "Lumi AI",
-        "memory_system": "Railway pgvector",
-        "timestamp": "2024-01-01T00:00:00Z"
-    }, 200
+    try:
+        # 簡單的健康檢查，不依賴複雜的初始化
+        return {
+            "status": "healthy",
+            "service": "Lumi AI",
+            "message": "服務正在運行",
+            "timestamp": "2024-01-01T00:00:00Z"
+        }, 200
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"健康檢查失敗: {str(e)}"
+        }, 500
 
 @app.route("/", methods=['GET'])
 def home():
