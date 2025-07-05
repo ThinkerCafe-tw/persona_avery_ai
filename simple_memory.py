@@ -1,103 +1,161 @@
 import os
-import json # 暫時保留，可能用於調試或備份，但最終會移除
+import json
 from datetime import datetime
-import psycopg2 # 新增
-from pgvector.psycopg2 import register_vector # 新增
-import google.generativeai as genai # 新增
+import psycopg2
+from pgvector.psycopg2 import register_vector
+import google.generativeai as genai
 import vertexai
 from vertexai.preview.generative_models import GenerativeModel as VertexModel
-import numpy as np # 新增
-
-# 載入環境變數 (確保在 app.py 或其他入口點已載入)
-# from dotenv import load_dotenv
-# load_dotenv()
+import numpy as np
 
 class SimpleLumiMemory:
     def __init__(self, embedding_model_instance):
-        # 移除檔案記憶相關的初始化
-        # persistent_dir = os.getenv('PERSISTENT_STORAGE_PATH', '/app/data')
-        # os.makedirs(persistent_dir, exist_ok=True)
-        # self.memory_file = os.path.join(persistent_dir, 'lumi_memory.json')
-        # self.user_memories = self._load_memories_from_file()
-
         self.conn = None
-        try:
-            print("嘗試連接資料庫，DATABASE_URL =", os.getenv('DATABASE_URL'))            
-            self.conn = psycopg2.connect(os.getenv('DATABASE_URL'))
-            self._initialize_db() # <<<<<<< 修正：先初始化DB
-            register_vector(self.conn) # <<<<<<< 修正：後註冊vector
-            print("SimpleLumiMemory: PGVector 記憶系統已初始化並連接資料庫")
-        except Exception as e:
-            print(f"SimpleLumiMemory: 連接 PGVector 資料庫失敗: {e}")
-            # 這裡可以選擇是否要讓應用程式崩潰，或者使用備用記憶方案
-            # 目前先讓它打印錯誤，如果沒有資料庫連接，記憶功能將失效
-
         self.embedding_model = embedding_model_instance
+        
+        # Railway pgvector 連接初始化
+        self._initialize_railway_pgvector()
+        
         if self.embedding_model:
             print("SimpleLumiMemory: 嵌入模型已成功傳入")
         else:
             print("SimpleLumiMemory: 警告：未傳入嵌入模型實例")
 
+    def _initialize_railway_pgvector(self):
+        """初始化 Railway pgvector 服務連接"""
+        try:
+            # 從 Railway 環境變數獲取連接字串
+            database_url = os.getenv('DATABASE_URL')
+            
+            if not database_url:
+                print("❌ 錯誤：未找到 DATABASE_URL 環境變數")
+                print("請確保在 Railway 中正確配置了 pgvector 服務")
+                return
+            
+            print(f"🔗 正在連接 Railway pgvector 服務...")
+            print(f"   連接字串: {database_url[:50]}...")
+            
+            # 建立連接
+            self.conn = psycopg2.connect(database_url)
+            
+            # 註冊 pgvector 擴展
+            register_vector(self.conn)
+            
+            # 初始化資料庫結構
+            self._initialize_db()
+            
+            print("✅ Railway pgvector 服務連接成功！")
+            
+        except Exception as e:
+            print(f"❌ Railway pgvector 服務連接失敗: {e}")
+            print("請檢查：")
+            print("1. Railway 專案中是否已添加 pgvector 服務")
+            print("2. DATABASE_URL 環境變數是否正確設定")
+            print("3. 網路連接是否正常")
+            self.conn = None
 
     def _initialize_db(self):
-        with self.conn.cursor() as cur:
-            # 啟用 vector 擴展
-            cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
-            self.conn.commit() # 提交變更
-
-            # 創建記憶資料表
-            # embedding 欄位使用 VECTOR(768) 因為 text-embedding-004 的輸出維度是 768
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS lumi_memories (
-                    id SERIAL PRIMARY KEY,
-                    user_id TEXT NOT NULL,
-                    user_message TEXT NOT NULL,
-                    lumi_response TEXT NOT NULL,
-                    emotion_tag TEXT,
-                    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    embedding VECTOR(768)
-                );
-            """)
-            self.conn.commit() # 提交變更
-            print("SimpleLumiMemory: 資料庫表已檢查/創建")
-
-    # 移除 _load_memories_from_file 和 _save_memories_to_file
-    # def _load_memories_from_file(self):
-    #     ...
-    # def _save_memories_to_file(self):
-    #     ...
+        """初始化 Railway pgvector 資料庫結構"""
+        if not self.conn:
+            return
+            
+        try:
+            with self.conn.cursor() as cur:
+                # Railway pgvector 服務已經預裝了 vector 擴展，但我們還是確保它存在
+                cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+                self.conn.commit()
+                
+                # 創建記憶資料表（Railway pgvector 優化版本）
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS lumi_memories (
+                        id SERIAL PRIMARY KEY,
+                        user_id TEXT NOT NULL,
+                        user_message TEXT NOT NULL,
+                        lumi_response TEXT NOT NULL,
+                        emotion_tag TEXT,
+                        timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        embedding VECTOR(768),
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
+                
+                # 創建索引以優化查詢效能
+                cur.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_lumi_memories_user_id 
+                    ON lumi_memories(user_id);
+                """)
+                
+                cur.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_lumi_memories_timestamp 
+                    ON lumi_memories(timestamp DESC);
+                """)
+                
+                cur.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_lumi_memories_emotion_tag 
+                    ON lumi_memories(emotion_tag) WHERE emotion_tag IS NOT NULL;
+                """)
+                
+                self.conn.commit()
+                print("✅ Railway pgvector 資料庫結構初始化完成")
+                
+        except Exception as e:
+            print(f"❌ Railway pgvector 資料庫初始化失敗: {e}")
+            self.conn = None
 
     def _get_embedding(self, text):
-        # <<<<<<< 修正：直接使用 genai.embed_content
+        """使用 Vertex AI 生成文本嵌入"""
         try:
-            # 確保輸入是字串
             if not isinstance(text, str):
                 text = str(text)
             
-            # 處理空字串情況
             if not text.strip():
-                return np.zeros(768).tolist() # 返回一個零向量
-
-            # 使用 Vertex AI 嵌入模型進行嵌入
+                return np.zeros(768).tolist()
+            
+            if not self.embedding_model:
+                print("警告：嵌入模型未初始化")
+                return None
+            
+            # 使用 Vertex AI 嵌入模型
             result = self.embedding_model.embed_content(
-                model="text-embedding-004", # Vertex AI 模型名稱
+                model="text-embedding-004",
                 content=text,
                 task_type="RETRIEVAL_DOCUMENT"
             )
-            # 確保返回的是 list
+            
             return result['embedding']
+            
         except Exception as e:
-            print(f"生成嵌入失敗: {e}")
+            print(f"❌ 生成嵌入失敗: {e}")
             return None
 
-    def store_conversation_memory(self, user_id, user_message, lumi_response, emotion_tag=None):
+    def _ensure_connection(self):
+        """確保資料庫連接正常"""
         if not self.conn:
-            print("警告: 資料庫連接未建立，無法儲存記憶。")
+            print("❌ 資料庫連接未建立")
+            return False
+        
+        try:
+            # 測試連接
+            with self.conn.cursor() as cur:
+                cur.execute("SELECT 1")
+            return True
+        except Exception as e:
+            print(f"❌ 資料庫連接測試失敗: {e}")
+            # 嘗試重新連接
+            try:
+                self._initialize_railway_pgvector()
+                return self.conn is not None
+            except:
+                return False
+
+    def store_conversation_memory(self, user_id, user_message, lumi_response, emotion_tag=None):
+        if not self._ensure_connection():
+            print("❌ 無法儲存記憶：Railway pgvector 服務連接失敗")
             return
 
         embedding = self._get_embedding(user_message)
         if embedding is None:
-            print("警告: 無法生成嵌入，記憶未儲存。")
+            print("❌ 無法生成嵌入，記憶未儲存")
             return
 
         try:
@@ -107,12 +165,14 @@ class SimpleLumiMemory:
                     VALUES (%s, %s, %s, %s, %s);
                 """, (user_id, user_message, lumi_response, emotion_tag, embedding))
                 self.conn.commit()
-            print(f"SimpleLumiMemory: 已儲存用戶 {user_id[:8]}... 的對話記憶到 PGVector")
+            print(f"✅ 已儲存用戶 {user_id[:8]}... 的對話記憶到 Railway pgvector")
         except Exception as e:
-            print(f"SimpleLumiMemory: 儲存記憶到 PGVector 失敗: {e}")
+            print(f"❌ 儲存記憶到 Railway pgvector 失敗: {e}")
+            # 嘗試重新連接
+            self._ensure_connection()
 
     def get_recent_memories(self, user_id, limit=5): # 這裡的 limit 應該是從 PGVector 檢索的數量
-        if not self.conn:
+        if not self._ensure_connection():
             print("警告: 資料庫連接未建立，無法檢索記憶。")
             return []
         
@@ -147,8 +207,203 @@ class SimpleLumiMemory:
             print(f"SimpleLumiMemory: 從 PGVector 檢索記憶失敗: {e}")
             return []
 
+    def get_similar_memories(self, user_id, query_message, limit=5, similarity_threshold=0.7):
+        """根據相似度搜尋相關記憶"""
+        if not self._ensure_connection():
+            print("警告: 資料庫連接未建立，無法進行相似度搜尋。")
+            return []
+        
+        query_embedding = self._get_embedding(query_message)
+        if query_embedding is None:
+            print("警告: 無法生成查詢嵌入，使用時間排序檢索。")
+            return self.get_recent_memories(user_id, limit)
+        
+        try:
+            with self.conn.cursor() as cur:
+                # 使用餘弦相似度搜尋最相關的記憶
+                cur.execute("""
+                    SELECT user_message, lumi_response, emotion_tag, timestamp,
+                           1 - (embedding <=> %s) as similarity
+                    FROM lumi_memories
+                    WHERE user_id = %s
+                    AND 1 - (embedding <=> %s) > %s
+                    ORDER BY embedding <=> %s
+                    LIMIT %s;
+                """, (query_embedding, user_id, query_embedding, similarity_threshold, query_embedding, limit))
+                rows = cur.fetchall()
+                
+                memories = []
+                for row in rows:
+                    memories.append({
+                        'user_message': row[0],
+                        'lumi_response': row[1],
+                        'emotion_tag': row[2],
+                        'timestamp': row[3].isoformat(),
+                        'similarity': float(row[4])
+                    })
+                return memories
+        except Exception as e:
+            print(f"SimpleLumiMemory: 相似度搜尋失敗: {e}")
+            return self.get_recent_memories(user_id, limit)
+
+    def get_user_profile_memories(self, user_id, limit=10):
+        """獲取用戶個人資料相關的記憶（偏好、習慣、重要事件等）"""
+        if not self._ensure_connection():
+            print("警告: 資料庫連接未建立，無法獲取用戶資料記憶。")
+            return []
+        
+        # 定義個人資料相關的關鍵詞
+        profile_keywords = [
+            '喜歡', '討厭', '習慣', '工作', '學校', '家人', '朋友', '興趣', '愛好',
+            '生日', '年齡', '住址', '電話', 'email', '職業', '學歷', '夢想', '目標',
+            '害怕', '擔心', '開心', '難過', '壓力', '放鬆', '運動', '音樂', '電影',
+            '食物', '顏色', '動物', '地方', '旅行', '學習', '技能', '成就', '挫折'
+        ]
+        
+        try:
+            with self.conn.cursor() as cur:
+                # 搜尋包含個人資料關鍵詞的記憶
+                keyword_conditions = " OR ".join([f"user_message ILIKE '%{keyword}%'" for keyword in profile_keywords])
+                cur.execute(f"""
+                    SELECT user_message, lumi_response, emotion_tag, timestamp
+                    FROM lumi_memories
+                    WHERE user_id = %s AND ({keyword_conditions})
+                    ORDER BY timestamp DESC
+                    LIMIT %s;
+                """, (user_id, limit))
+                rows = cur.fetchall()
+                
+                memories = []
+                for row in rows:
+                    memories.append({
+                        'user_message': row[0],
+                        'lumi_response': row[1],
+                        'emotion_tag': row[2],
+                        'timestamp': row[3].isoformat()
+                    })
+                return memories
+        except Exception as e:
+            print(f"SimpleLumiMemory: 獲取用戶資料記憶失敗: {e}")
+            return []
+
+    def get_emotional_memories(self, user_id, emotion_type=None, limit=5):
+        """獲取特定情緒類型的記憶"""
+        if not self._ensure_connection():
+            print("警告: 資料庫連接未建立，無法獲取情緒記憶。")
+            return []
+        
+        try:
+            with self.conn.cursor() as cur:
+                if emotion_type:
+                    cur.execute("""
+                        SELECT user_message, lumi_response, emotion_tag, timestamp
+                        FROM lumi_memories
+                        WHERE user_id = %s AND emotion_tag = %s
+                        ORDER BY timestamp DESC
+                        LIMIT %s;
+                    """, (user_id, emotion_type, limit))
+                else:
+                    cur.execute("""
+                        SELECT user_message, lumi_response, emotion_tag, timestamp
+                        FROM lumi_memories
+                        WHERE user_id = %s AND emotion_tag IS NOT NULL
+                        ORDER BY timestamp DESC
+                        LIMIT %s;
+                    """, (user_id, limit))
+                
+                rows = cur.fetchall()
+                memories = []
+                for row in rows:
+                    memories.append({
+                        'user_message': row[0],
+                        'lumi_response': row[1],
+                        'emotion_tag': row[2],
+                        'timestamp': row[3].isoformat()
+                    })
+                return memories
+        except Exception as e:
+            print(f"SimpleLumiMemory: 獲取情緒記憶失敗: {e}")
+            return []
+
+    def get_long_term_memories(self, user_id, days_back=30, limit=20):
+        """獲取長期記憶（指定天數內的重要記憶）"""
+        if not self._ensure_connection():
+            print("警告: 資料庫連接未建立，無法獲取長期記憶。")
+            return []
+        
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("""
+                    SELECT user_message, lumi_response, emotion_tag, timestamp
+                    FROM lumi_memories
+                    WHERE user_id = %s 
+                    AND timestamp >= NOW() - INTERVAL '%s days'
+                    ORDER BY timestamp DESC
+                    LIMIT %s;
+                """, (user_id, days_back, limit))
+                rows = cur.fetchall()
+                
+                memories = []
+                for row in rows:
+                    memories.append({
+                        'user_message': row[0],
+                        'lumi_response': row[1],
+                        'emotion_tag': row[2],
+                        'timestamp': row[3].isoformat()
+                    })
+                return memories
+        except Exception as e:
+            print(f"SimpleLumiMemory: 獲取長期記憶失敗: {e}")
+            return []
+
+    def get_memory_statistics(self, user_id):
+        """獲取用戶記憶統計資訊"""
+        if not self._ensure_connection():
+            print("警告: 資料庫連接未建立，無法獲取記憶統計。")
+            return {}
+        
+        try:
+            with self.conn.cursor() as cur:
+                # 總對話數
+                cur.execute("SELECT COUNT(*) FROM lumi_memories WHERE user_id = %s", (user_id,))
+                total_conversations = cur.fetchone()[0]
+                
+                # 情緒分布
+                cur.execute("""
+                    SELECT emotion_tag, COUNT(*) 
+                    FROM lumi_memories 
+                    WHERE user_id = %s AND emotion_tag IS NOT NULL 
+                    GROUP BY emotion_tag
+                    ORDER BY COUNT(*) DESC
+                """, (user_id,))
+                emotion_distribution = dict(cur.fetchall())
+                
+                # 最近互動時間
+                cur.execute("SELECT MAX(timestamp) FROM lumi_memories WHERE user_id = %s", (user_id,))
+                last_interaction = cur.fetchone()[0]
+                
+                # 互動頻率（最近7天）
+                cur.execute("""
+                    SELECT COUNT(*) 
+                    FROM lumi_memories 
+                    WHERE user_id = %s 
+                    AND timestamp >= NOW() - INTERVAL '7 days'
+                """, (user_id,))
+                weekly_interactions = cur.fetchone()[0]
+                
+                return {
+                    'total_conversations': total_conversations,
+                    'emotion_distribution': emotion_distribution,
+                    'last_interaction': last_interaction.isoformat() if last_interaction else None,
+                    'weekly_interactions': weekly_interactions,
+                    'memory_strength': 'strong' if total_conversations > 50 else 'medium' if total_conversations > 20 else 'weak'
+                }
+        except Exception as e:
+            print(f"SimpleLumiMemory: 獲取記憶統計失敗: {e}")
+            return {}
+
     def get_daily_memories(self, user_id, date_str):
-        if not self.conn:
+        if not self._ensure_connection():
             print("警告: 資料庫連接未建立，無法檢索每日記憶。")
             return []
         
@@ -177,7 +432,7 @@ class SimpleLumiMemory:
             return []
 
     def get_memory_summary(self, user_id):
-        if not self.conn:
+        if not self._ensure_connection():
             print("警告: 資料庫連接未建立，無法獲取記憶摘要。")
             return {'total_memories': 0, 'last_interaction': 'N/A'}
         
@@ -199,7 +454,7 @@ class SimpleLumiMemory:
             return {'total_memories': 0, 'last_interaction': 'N/A'}
 
     def get_user_emotion_patterns(self, user_id):
-        if not self.conn:
+        if not self._ensure_connection():
             print("警告: 資料庫連接未建立，無法獲取情緒模式。")
             return {'dominant_emotion': 'friend', 'total_interactions': 0}
 

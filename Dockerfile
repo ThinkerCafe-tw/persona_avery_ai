@@ -1,25 +1,42 @@
-FROM python:3.10-slim-buster
+# 使用 Python 3.11 slim 映像
+FROM python:3.11-slim
 
 # 設定工作目錄
 WORKDIR /app
 
-# 安裝 psycopg2-binary 所需的系統依賴
+# 設定環境變數
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV FLASK_ENV=production
+
+# 安裝系統依賴
 RUN apt-get update && apt-get install -y \
-    postgresql-client \
-    libpq-dev \
     gcc \
-    python3-dev \
+    g++ \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 安裝 Python 套件
+# 複製依賴檔案
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# 複製專案檔案
+# 安裝 Python 依賴
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# 複製應用程式
 COPY . .
 
-# 暴露 Railway 指定的 PORT（不是寫死 8080！）
-EXPOSE $PORT
+# 創建非 root 用戶
+RUN useradd --create-home --shell /bin/bash app && \
+    chown -R app:app /app
+USER app
 
-# 啟動指令：先印出 PORT 變數供日誌追蹤，再用 $PORT 啟動 Gunicorn
-CMD [ "/bin/sh", "-c", "echo \"---> Starting on PORT: $PORT\" && python3 -m gunicorn app:app --bind 0.0.0.0:$PORT --log-level debug" ]
+# 暴露端口
+EXPOSE 5000
+
+# 健康檢查
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+# 啟動應用程式
+CMD ["python", "app.py"]

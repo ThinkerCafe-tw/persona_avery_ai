@@ -63,4 +63,28 @@ def handle_message(event):
         event.reply_token,
         TextSendMessage(text=reply_message)
     )
+
+@app.route("/health", methods=['GET'])
+def health_check():
+    """Railway 健康檢查端點"""
+    return {
+        "status": "healthy",
+        "service": "Lumi AI",
+        "memory_system": "Railway pgvector",
+        "timestamp": "2024-01-01T00:00:00Z"
+    }, 200
+
+@app.route("/", methods=['GET'])
+def home():
+    """首頁端點"""
+    return {
+        "message": "Lumi AI 服務運行中",
+        "features": [
+            "長期記憶系統",
+            "Railway pgvector 服務",
+            "多元人格模式",
+            "LINE Bot 整合"
+        ],
+        "status": "active"
+    }, 200
     
