@@ -1,6 +1,0 @@
-Flask
-line-bot-sdk
-python-dotenv
-psycopg2-binary
-numpy
-requests 

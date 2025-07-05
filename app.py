@@ -2,16 +2,14 @@ import os
 from dotenv import load_dotenv
 from flask import Flask, request, abort
 
-# 使用已知工作的 LINE Bot SDK 導入方式
-from linebot import (
-    LineBotApi, WebhookHandler
-)
-from linebot.exceptions import (
-    InvalidSignatureError
-)
-from linebot.models import (
+# 使用 LINE Bot SDK v3 正確導入方式
+from linebot.v3.messaging import MessagingApi
+from linebot.v3.webhook import WebhookHandler
+from linebot.v3.exceptions import InvalidSignatureError
+from linebot.v3.messaging import (
     MessageEvent, TextMessage, TextSendMessage,
 )
+print("✅ 使用 LINE Bot SDK v3 正確導入方式")
 
 # Import your AI logic
 from ai_logic import get_lumi_response
@@ -33,7 +31,7 @@ if CHANNEL_ACCESS_TOKEN is None:
     print('Specify LINE_CHANNEL_ACCESS_TOKEN as environment variable.')
     exit(1)
 
-line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
+line_bot_api = MessagingApi(CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(CHANNEL_SECRET)
 
 @app.route("/callback", methods=['POST'])
@@ -60,10 +58,15 @@ def handle_message(event):
 
     reply_message = get_lumi_response(user_message, event.source.user_id)
     print("🤖 Lumi 回覆內容:", reply_message)
-    line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text=reply_message)
+    
+    # 使用 v3 API 發送回覆
+    from linebot.v3.messaging import ReplyMessageRequest, TextMessage as V3TextMessage
+    
+    request = ReplyMessageRequest(
+        reply_token=event.reply_token,
+        messages=[V3TextMessage(text=reply_message)]
     )
+    line_bot_api.reply_message(request)
 
 @app.route("/health", methods=['GET'])
 def health_check():
