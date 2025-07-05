@@ -59,15 +59,35 @@ def get_persona_prompt(persona_type):
     return base_info
 
 def get_lumi_response(message, user_id, persona_type=None):
-    prompt = get_persona_prompt(persona_type) + f"\n\n用戶訊息：{message}"
+    # 取得人格提示
+    prompt = get_persona_prompt(persona_type) or ""
+    memory_context = ""
     if memory_manager:
         try:
             recent_memories = memory_manager.get_recent_memories(user_id, limit=3)
             similar_memories_list = memory_manager.get_similar_memories(user_id, message, limit=3)
             profile_memories_list = memory_manager.get_user_profile_memories(user_id, limit=5)
-            # 可根據需要組合記憶上下文
+
+            # 組合最近對話歷史
+            if recent_memories:
+                memory_context += "\n\n【最近的對話歷史】\n"
+                for m in recent_memories:
+                    memory_context += f"用戶: {m.get('user_message', '')}\nLumi: {m.get('lumi_response', '')}\n"
+            # 組合個人資料記憶
+            if profile_memories_list:
+                memory_context += "\n\n【用戶個人資料】\n"
+                for m in profile_memories_list:
+                    memory_context += f"{m.get('user_message', '')} → {m.get('lumi_response', '')}\n"
+            # 組合相似歷史對話
+            if similar_memories_list:
+                memory_context += "\n\n【相關歷史對話】\n"
+                for m in similar_memories_list:
+                    memory_context += f"{m.get('user_message', '')} → {m.get('lumi_response', '')}\n"
         except Exception as e:
             print(f"記憶檢索失敗: {e}")
+    # 最終 prompt 組合
+    prompt += memory_context
+    prompt += f"\n\n用戶訊息：{message}"
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
