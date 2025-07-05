@@ -7,8 +7,11 @@ from datetime import datetime
 import json
 from simple_memory import SimpleLumiMemory
 from prompt_variations import prompt_variations
+import openai
 
 load_dotenv()
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # 設定Vertex AI (企業級)
 try:
@@ -694,8 +697,11 @@ def get_lumi_response(message, user_id):
                     print(f"❌ 備用API也失敗: {backup_error}")
                     reply_message = "抱歉，我現在有點忙，稍後再試試吧！"
         else:
-            response = model.generate_content(prompt)
-            reply_message = response.text.strip()
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            reply_message = response.choices[0].message.content.strip()
     except Exception as e:
         print(f"錯誤: {e}")
         reply_message = "嗨！我是Lumi，不好意思剛剛恍神了一下，可以再說一次嗎？"

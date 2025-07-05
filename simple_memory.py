@@ -3,17 +3,14 @@ import json
 from datetime import datetime
 import psycopg2
 from pgvector.psycopg2 import register_vector
-import google.generativeai as genai
-import vertexai
-from vertexai.preview.generative_models import GenerativeModel as VertexModel
 import numpy as np
+import openai
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 class SimpleLumiMemory:
-    def __init__(self, embedding_model_instance):
+    def __init__(self):
         self.conn = None
-        self.embedding_model = embedding_model_instance
-        
-        # Railway pgvector 連接初始化
         self._initialize_railway_pgvector()
         
         if self.embedding_model:
@@ -103,40 +100,17 @@ class SimpleLumiMemory:
             self.conn = None
 
     def _get_embedding(self, text):
-        """使用 Vertex AI 或備用 API 生成文本嵌入"""
+        """使用 OpenAI 生成文本嵌入"""
         try:
             if not isinstance(text, str):
                 text = str(text)
-            
             if not text.strip():
-                return np.zeros(768).tolist()
-            
-            if not self.embedding_model:
-                print("警告：嵌入模型未初始化")
-                return None
-            
-            # 檢查嵌入模型類型並使用相應的 API
-            try:
-                # 嘗試使用 Vertex AI 嵌入模型
-                result = self.embedding_model.embed_content(
-                    model="text-embedding-004",
-                    content=text,
-                    task_type="RETRIEVAL_DOCUMENT"
-                )
-                return result['embedding']
-            except AttributeError:
-                # 如果是備用 API，使用不同的方法
-                try:
-                    result = self.embedding_model.embed_content(text)
-                    # 確保返回的是列表格式
-                    if hasattr(result, 'values'):
-                        return list(result.values())
-                    else:
-                        return result
-                except Exception as backup_e:
-                    print(f"❌ 備用嵌入 API 失敗: {backup_e}")
-                    return None
-            
+                return np.zeros(1536).tolist()  # OpenAI ada-002 是 1536 維
+            result = openai.Embedding.create(
+                input=text,
+                model="text-embedding-ada-002"
+            )
+            return result['data'][0]['embedding']
         except Exception as e:
             print(f"❌ 生成嵌入失敗: {e}")
             return None
