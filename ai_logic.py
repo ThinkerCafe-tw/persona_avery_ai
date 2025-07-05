@@ -134,12 +134,15 @@ except Exception as e:
     try:
         genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
         model = genai.GenerativeModel('gemini-2.0-flash')
+        # 備用嵌入模型（使用 Gemini 的嵌入功能）
+        embedding_model = genai.GenerativeModel('embedding-001')
         print(" 備用Gemini API已初始化")
         print(" 提示：正在使用備用API，每日配額有限")
         USE_VERTEX_AI = False
     except Exception as backup_error:
         print(f"❌ 備用API也失敗: {backup_error}")
         model = None
+        embedding_model = None
         USE_VERTEX_AI = False
 
 # 初始化簡化記憶系統

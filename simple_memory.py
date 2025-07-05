@@ -103,7 +103,7 @@ class SimpleLumiMemory:
             self.conn = None
 
     def _get_embedding(self, text):
-        """使用 Vertex AI 生成文本嵌入"""
+        """使用 Vertex AI 或備用 API 生成文本嵌入"""
         try:
             if not isinstance(text, str):
                 text = str(text)
@@ -115,14 +115,27 @@ class SimpleLumiMemory:
                 print("警告：嵌入模型未初始化")
                 return None
             
-            # 使用 Vertex AI 嵌入模型
-            result = self.embedding_model.embed_content(
-                model="text-embedding-004",
-                content=text,
-                task_type="RETRIEVAL_DOCUMENT"
-            )
-            
-            return result['embedding']
+            # 檢查嵌入模型類型並使用相應的 API
+            try:
+                # 嘗試使用 Vertex AI 嵌入模型
+                result = self.embedding_model.embed_content(
+                    model="text-embedding-004",
+                    content=text,
+                    task_type="RETRIEVAL_DOCUMENT"
+                )
+                return result['embedding']
+            except AttributeError:
+                # 如果是備用 API，使用不同的方法
+                try:
+                    result = self.embedding_model.embed_content(text)
+                    # 確保返回的是列表格式
+                    if hasattr(result, 'values'):
+                        return list(result.values())
+                    else:
+                        return result
+                except Exception as backup_e:
+                    print(f"❌ 備用嵌入 API 失敗: {backup_e}")
+                    return None
             
         except Exception as e:
             print(f"❌ 生成嵌入失敗: {e}")
