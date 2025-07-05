@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 import google.generativeai as genai
 import vertexai
-from vertexai.preview.generative_models import GenerativeModel as VertexModel
+from vertexai.generative_models import GenerativeModel as VertexModel
 from datetime import datetime
 import json
 from simple_memory import SimpleLumiMemory

@@ -2,7 +2,7 @@ Flask
 line-bot-sdk
 python-dotenv
 google-generativeai
-google-cloud-aiplatform
+google-cloud-aiplatform>=1.40.0
 psycopg2-binary
 pgvector
 numpy
