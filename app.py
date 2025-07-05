@@ -20,6 +20,7 @@ except Exception as e:
 load_dotenv()
 
 app = Flask(__name__)
+import sys; print("✅ Flask app 啟動，Python 版本:", sys.version)
 print("✅ Flask app 已初始化，準備等待 Gunicorn 啟動")
 
 # Get Channel Secret and Channel Access Token from environment variables
@@ -79,6 +80,7 @@ def handle_message(event):
 
 @app.route('/health', methods=['GET'])
 def health_check():
+    print("✅ /health 路由被呼叫")
     return 'OK', 200
 
 @app.route("/", methods=['GET'])
