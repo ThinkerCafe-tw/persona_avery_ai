@@ -700,6 +700,14 @@ def get_lumi_response(message, user_id):
     
 
     
+    # 存儲對話記憶
+    if memory_manager and reply_message:
+        try:
+            memory_manager.store_conversation_memory(user_id, message, reply_message, persona_type)
+            print(f" 對話記憶已存儲: {user_id}")
+        except Exception as e:
+            print(f" 記憶存儲失敗: {e}")
+    
     # 最後無論如何都回傳
     return reply_message
 
