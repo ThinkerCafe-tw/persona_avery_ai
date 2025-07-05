@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from flask import Flask, request, abort
 
+# 使用已知工作的 LINE Bot SDK 導入方式
 from linebot import (
     LineBotApi, WebhookHandler
 )
@@ -87,4 +88,6 @@ def home():
         ],
         "status": "active"
     }, 200
-    
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=5000, debug=False) 

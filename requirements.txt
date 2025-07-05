@@ -1,5 +1,5 @@
 Flask
-line-bot-sdk>=3.0.0
+line-bot-sdk==3.5.0
 python-dotenv
 google-generativeai
 google-cloud-aiplatform>=1.40.0
