@@ -77,22 +77,9 @@ def handle_message(event):
     )
     line_bot_api.reply_message(request)
 
-@app.route("/health", methods=['GET'])
+@app.route('/health', methods=['GET'])
 def health_check():
-    """Railway 健康檢查端點"""
-    try:
-        # 簡單的健康檢查，不依賴複雜的初始化
-        return {
-            "status": "healthy",
-            "service": "Lumi AI",
-            "message": "服務正在運行",
-            "timestamp": "2024-01-01T00:00:00Z"
-        }, 200
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": f"健康檢查失敗: {str(e)}"
-        }, 500
+    return 'OK', 200
 
 @app.route("/", methods=['GET'])
 def home():
