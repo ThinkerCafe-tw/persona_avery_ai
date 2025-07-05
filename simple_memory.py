@@ -20,14 +20,14 @@ class SimpleLumiMemory:
         try:
             # 從 Railway 環境變數獲取連接字串
             database_url = os.getenv('DATABASE_URL')
+            print(f"[LOG] DATABASE_URL: {database_url}")
             
             if not database_url:
-                print("❌ 錯誤：未找到 DATABASE_URL 環境變數")
+                print("❌ [LOG] 未找到 DATABASE_URL 環境變數")
                 print("請確保在 Railway 中正確配置了 pgvector 服務")
                 return
             
-            print(f"🔗 正在連接 Railway pgvector 服務...")
-            print(f"   連接字串: {database_url[:50]}...")
+            print(f"[LOG] 正在連接 Railway pgvector 服務... {database_url[:50]}...")
             
             # 建立連接
             self.conn = psycopg2.connect(database_url)
@@ -38,10 +38,10 @@ class SimpleLumiMemory:
             # 初始化資料庫結構
             self._initialize_db()
             
-            print("✅ Railway pgvector 服務連接成功！")
+            print("✅ [LOG] Railway pgvector 服務連接成功！")
             
         except Exception as e:
-            print(f"❌ Railway pgvector 服務連接失敗: {e}")
+            print(f"❌ [LOG] Railway pgvector 服務連接失敗: {e}")
             print("請檢查：")
             print("1. Railway 專案中是否已添加 pgvector 服務")
             print("2. DATABASE_URL 環境變數是否正確設定")
@@ -51,6 +51,7 @@ class SimpleLumiMemory:
     def _initialize_db(self):
         """初始化 Railway pgvector 資料庫結構"""
         if not self.conn:
+            print("❌ [LOG] 無法初始化資料庫結構，未連接資料庫")
             return
             
         try:
@@ -90,14 +91,15 @@ class SimpleLumiMemory:
                 """)
                 
                 self.conn.commit()
-                print("✅ Railway pgvector 資料庫結構初始化完成")
+                print("✅ [LOG] Railway pgvector 資料庫結構初始化完成")
                 
         except Exception as e:
-            print(f"❌ Railway pgvector 資料庫初始化失敗: {e}")
+            print(f"❌ [LOG] Railway pgvector 資料庫初始化失敗: {e}")
             self.conn = None
 
     def _get_embedding(self, text):
         """使用 OpenAI 生成文本嵌入"""
+        print(f"[LOG] 生成嵌入 for text: {text}")
         try:
             if not isinstance(text, str):
                 text = str(text)
@@ -107,24 +109,26 @@ class SimpleLumiMemory:
                 input=text,
                 model="text-embedding-ada-002"
             )
+            print(f"[LOG] 嵌入生成成功，長度: {len(result['data'][0]['embedding'])}")
             return result['data'][0]['embedding']
         except Exception as e:
-            print(f"❌ 生成嵌入失敗: {e}")
+            print(f"❌ [LOG] 生成嵌入失敗: {e}")
             return None
 
     def _ensure_connection(self):
         """確保資料庫連接正常"""
         if not self.conn:
-            print("❌ 資料庫連接未建立")
+            print("❌ [LOG] 資料庫連接未建立")
             return False
         
         try:
             # 測試連接
             with self.conn.cursor() as cur:
                 cur.execute("SELECT 1")
+            print("[LOG] 資料庫連接測試成功")
             return True
         except Exception as e:
-            print(f"❌ 資料庫連接測試失敗: {e}")
+            print(f"❌ [LOG] 資料庫連接測試失敗: {e}")
             # 嘗試重新連接
             try:
                 self._initialize_railway_pgvector()
@@ -133,13 +137,14 @@ class SimpleLumiMemory:
                 return False
 
     def store_conversation_memory(self, user_id, user_message, lumi_response, emotion_tag=None):
+        print(f"[LOG] 儲存記憶: user_id={user_id}, user_message={user_message}, lumi_response={lumi_response}, emotion_tag={emotion_tag}")
         if not self._ensure_connection():
-            print("❌ 無法儲存記憶：Railway pgvector 服務連接失敗")
+            print("❌ [LOG] 無法儲存記憶：Railway pgvector 服務連接失敗")
             return
 
         embedding = self._get_embedding(user_message)
         if embedding is None:
-            print("❌ 無法生成嵌入，記憶未儲存")
+            print("❌ [LOG] 無法生成嵌入，記憶未儲存")
             return
 
         try:
@@ -149,9 +154,9 @@ class SimpleLumiMemory:
                     VALUES (%s, %s, %s, %s, %s);
                 """, (user_id, user_message, lumi_response, emotion_tag, embedding))
                 self.conn.commit()
-            print(f"✅ 已儲存用戶 {user_id[:8]}... 的對話記憶到 Railway pgvector")
+            print(f"✅ [LOG] 已儲存用戶 {user_id[:8]}... 的對話記憶到 Railway pgvector")
         except Exception as e:
-            print(f"❌ 儲存記憶到 Railway pgvector 失敗: {e}")
+            print(f"❌ [LOG] 儲存記憶到 Railway pgvector 失敗: {e}")
             # 嘗試重新連接
             self._ensure_connection()
 
