@@ -4,7 +4,8 @@ from flask import Flask, request, abort
 
 # 使用 LINE Bot SDK v3 正確導入方式
 from linebot.v3.messaging import MessagingApi, TextMessage
-from linebot.v3.webhook import WebhookHandler, MessageEvent, TextMessage
+from linebot.v3.webhook import WebhookHandler
+from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from linebot.v3.exceptions import InvalidSignatureError
 print("✅ 使用 LINE Bot SDK v3 正確導入方式")
 
@@ -76,28 +77,32 @@ def callback():
 
     return 'OK'
 
-@handler.add(MessageEvent, message=TextMessage)
+@handler.add(MessageEvent)
 def handle_message(event):
     # print event
     print("=== handle_message 進來了 ===")
     try:
         print(f"event: {event}")
-        user_message = event.message.text
-        print("使用者訊息：", user_message)
-        if get_lumi_response:
-            reply_message = get_lumi_response(user_message, event.source.user_id)
-            print("Lumi 回覆內容：", reply_message)
+        # 判斷訊息型態
+        if isinstance(event.message, TextMessageContent):
+            user_message = event.message.text
+            print("使用者訊息：", user_message)
+            if get_lumi_response:
+                reply_message = get_lumi_response(user_message, event.source.user_id)
+                print("Lumi 回覆內容：", reply_message)
+            else:
+                reply_message = "抱歉，AI 系統正在初始化中，請稍後再試！"
+            # 發送回覆
+            from linebot.v3.messaging import ReplyMessageRequest
+            request = ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[TextMessage(text=reply_message)]
+            )
+            print("準備送出 LINE 回覆", request)
+            line_bot_api.reply_message(request)
+            print("✅ 發送成功")
         else:
-            reply_message = "抱歉，AI 系統正在初始化中，請稍後再試！"
-        # 發送回覆
-        from linebot.v3.messaging import ReplyMessageRequest
-        request = ReplyMessageRequest(
-            reply_token=event.reply_token,
-            messages=[TextMessage(text=reply_message)]
-        )
-        print("準備送出 LINE 回覆", request)
-        line_bot_api.reply_message(request)
-        print("✅ 發送成功")
+            print("❌ 非文字訊息，忽略")
     except Exception as e:
         print(f"❌ 發送失敗：{e}")
 
