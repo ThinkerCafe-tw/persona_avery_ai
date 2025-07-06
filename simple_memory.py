@@ -306,8 +306,8 @@ class SimpleLumiMemory:
         
         try:
             with self.conn.cursor() as cur:
-                # 確保 embedding 是逗號分隔的字串，並加上中括號
-                embedding_str = '[' + ','.join([str(x) for x in query_embedding]) + ']'
+                # 只保留逗號分隔的字串，不加中括號
+                embedding_str = ','.join([str(x) for x in query_embedding])
                 
                 # 使用餘弦相似度搜尋最相關的記憶 - 修正 pgvector 語法
                 cur.execute("""

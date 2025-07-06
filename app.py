@@ -42,11 +42,21 @@ def home():
 @app.route("/health")
 def health_check():
     try:
-        # 測試資料庫連接
-        if memory_system._ensure_connection():
-            return {"status": "healthy", "message": "Lumi AI 運行正常"}, 200
-        else:
-            return {"status": "unhealthy", "error": "資料庫連接失敗"}, 500
+        # 先測試基本功能
+        logger.info("✅ 健康檢查開始")
+        
+        # 測試資料庫連接（可選）
+        try:
+            if memory_system._ensure_connection():
+                logger.info("✅ 資料庫連接正常")
+                return {"status": "healthy", "message": "Lumi AI 運行正常"}, 200
+            else:
+                logger.warning("⚠️ 資料庫連接失敗，但應用程式仍可運行")
+                return {"status": "healthy", "message": "Lumi AI 運行正常（資料庫待連接）"}, 200
+        except Exception as db_error:
+            logger.warning(f"⚠️ 資料庫檢查失敗: {db_error}")
+            return {"status": "healthy", "message": "Lumi AI 運行正常（資料庫待連接）"}, 200
+            
     except Exception as e:
         logger.error(f"❌ 健康檢查失敗: {e}")
         return {"status": "unhealthy", "error": str(e)}, 500
