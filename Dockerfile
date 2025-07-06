@@ -37,5 +37,5 @@ USER app
 # 暴露端口
 EXPOSE 8080
 
-# 啟動應用程式 - 簡化並加入調試
-CMD ["sh", "-c", "echo '=== 啟動調試 ===' && echo 'PORT: $PORT' && echo 'PWD: $(pwd)' && ls -la && echo '=== 檢查 Gunicorn ===' && which gunicorn && gunicorn --version && echo '=== 啟動 Gunicorn ===' && exec gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 1 --timeout 120 --access-logfile - --error-logfile - --log-level debug app:app"]
+# 啟動應用程式
+CMD ["sh", "-c", "python app.py"]

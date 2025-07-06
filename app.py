@@ -21,7 +21,7 @@ load_dotenv()
 
 app = Flask(__name__)
 import sys; print("✅ Flask app 啟動，Python 版本:", sys.version)
-print("✅ Flask app 已初始化，準備等待 Gunicorn 啟動")
+print("✅ Flask app 已初始化，準備啟動伺服器")
 
 # 顯示端口資訊
 port = os.getenv('PORT', '8080')
@@ -118,4 +118,9 @@ def home():
             "LINE Bot 整合"
         ],
         "status": "active"
-    }, 200 
+    }, 200
+
+# 啟動 Flask 伺服器
+if __name__ == "__main__":
+    print(f"🚀 啟動 Flask 伺服器，端口: {port}")
+    app.run(host='0.0.0.0', port=int(port), debug=False) 
