@@ -4,9 +4,9 @@ from datetime import datetime
 import psycopg2
 from pgvector.psycopg2 import register_vector
 import numpy as np
-from openai import OpenAI
+import openai
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 class SimpleLumiMemory:
     def __init__(self):
@@ -105,12 +105,12 @@ class SimpleLumiMemory:
                 text = str(text)
             if not text.strip():
                 return np.zeros(1536).tolist()  # OpenAI ada-002 是 1536 維
-            result = client.embeddings.create(
+            result = openai.Embedding.create(
                 input=text,
                 model="text-embedding-ada-002"
             )
-            print(f"[LOG] 嵌入生成成功，長度: {len(result.data[0].embedding)}")
-            return result.data[0].embedding
+            print(f"[LOG] 嵌入生成成功，長度: {len(result['data'][0]['embedding'])}")
+            return result['data'][0]['embedding']
         except Exception as e:
             print(f"❌ [LOG] 生成嵌入失敗: {e}")
             return None
