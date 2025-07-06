@@ -4,7 +4,7 @@ from flask import Flask, request, abort
 
 # 使用 LINE Bot SDK v3 正確導入方式
 from linebot.v3.messaging import MessagingApi, TextMessage
-from linebot.v3.webhook import WebhookHandler, MessageEvent
+from linebot.v3.webhook import WebhookHandler, MessageEvent, TextMessage
 from linebot.v3.exceptions import InvalidSignatureError
 print("✅ 使用 LINE Bot SDK v3 正確導入方式")
 
@@ -44,14 +44,21 @@ handler = WebhookHandler(CHANNEL_SECRET)
 @app.route("/callback", methods=['POST'])
 def callback():
     print("=== LINE Webhook 被呼叫 ===")
-    # get X-Line-Signature header value
     signature = request.headers['X-Line-Signature']
-    print(f"✅ 收到 LINE 簽名: {signature[:20]}...")
-
-    # get request body as text
     body = request.get_data(as_text=True)
-    print(f"✅ 收到 webhook 內容: {body[:200]}...")
     app.logger.info("Request body: " + body)
+    print("==== Raw body ====")
+    print(body)
+    
+    # 這裡加入直接 parse 並印出 events
+    import json
+    try:
+        events = json.loads(body).get("events", [])
+        print("==== Events ====")
+        print(events)
+    except Exception as e:
+        print("== 解析 events 失敗 ==")
+        print(e)
 
     # handle webhook body
     try:
@@ -71,6 +78,7 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
+    # print event
     print("=== handle_message 進來了 ===")
     try:
         print(f"event: {event}")
