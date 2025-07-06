@@ -1,3 +1,5 @@
-強制重新部署 - 修正 LINE Bot SDK 問題
-時間: 2025-07-06
-版本: line-bot-sdk==3.3.0 
+強制重新部署 - 修正 LINE Bot SDK v3 初始化問題
+時間: 2025-07-06 14:30
+版本: line-bot-sdk==3.3.0
+修正: MessagingApi(api_client) 正確初始化
+狀態: 等待 Railway 重新部署 
