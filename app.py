@@ -101,9 +101,4 @@ def home():
             "LINE Bot 整合"
         ],
         "status": "active"
-    }, 200
-
-# 如果直接運行此檔案，啟動 Flask 開發伺服器
-if __name__ == "__main__":
-    print(f"🚀 直接啟動 Flask 開發伺服器，端口: {port}")
-    app.run(host='0.0.0.0', port=int(port), debug=False) 
+    }, 200 
