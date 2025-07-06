@@ -306,17 +306,17 @@ class SimpleLumiMemory:
         
         try:
             with self.conn.cursor() as cur:
-                # 確保 embedding 是逗號分隔的字串
-                embedding_str = ','.join([str(x) for x in query_embedding])
+                # 確保 embedding 是逗號分隔的字串，並加上中括號
+                embedding_str = '[' + ','.join([str(x) for x in query_embedding]) + ']'
                 
                 # 使用餘弦相似度搜尋最相關的記憶 - 修正 pgvector 語法
                 cur.execute("""
                     SELECT user_message, lumi_response, emotion_tag, timestamp,
-                           1 - (embedding <=> (%s)::vector) as similarity
+                           1 - (embedding <=> %s::vector) as similarity
                     FROM lumi_memories
                     WHERE user_id = %s
-                    AND 1 - (embedding <=> (%s)::vector) > %s
-                    ORDER BY embedding <=> (%s)::vector
+                    AND 1 - (embedding <=> %s::vector) > %s
+                    ORDER BY embedding <=> %s::vector
                     LIMIT %s;
                 """, (embedding_str, user_id, embedding_str, similarity_threshold, embedding_str, limit))
                 rows = cur.fetchall()
