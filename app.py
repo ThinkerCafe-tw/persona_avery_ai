@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from flask import Flask, request, abort
 
 # 使用 LINE Bot SDK v3 正確導入方式
-from linebot.v3.messaging import MessagingApi, TextMessage
+from linebot.v3.messaging import MessagingApi, TextMessage, Configuration
 from linebot.v3.webhook import WebhookHandler
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from linebot.v3.exceptions import InvalidSignatureError
@@ -39,7 +39,8 @@ if CHANNEL_ACCESS_TOKEN is None:
     print('Specify LINE_CHANNEL_ACCESS_TOKEN as environment variable.')
     exit(1)
 
-line_bot_api = MessagingApi(CHANNEL_ACCESS_TOKEN)
+configuration = Configuration(access_token=CHANNEL_ACCESS_TOKEN)
+line_bot_api = MessagingApi(configuration)
 handler = WebhookHandler(CHANNEL_SECRET)
 
 @app.route("/callback", methods=['POST'])
@@ -105,6 +106,22 @@ def handle_message(event):
             print("❌ 非文字訊息，忽略")
     except Exception as e:
         print(f"❌ 發送失敗：{e}")
+        print(f"❌ 錯誤類型：{type(e)}")
+        import traceback
+        print(f"❌ 詳細錯誤：{traceback.format_exc()}")
+        
+        # 嘗試備用發送方式
+        try:
+            print("🔄 嘗試備用發送方式...")
+            from linebot.v3.messaging import ReplyMessageRequest, TextMessage
+            backup_request = ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[TextMessage(text=reply_message)]
+            )
+            line_bot_api.reply_message(backup_request)
+            print("✅ 備用發送成功")
+        except Exception as backup_e:
+            print(f"❌ 備用發送也失敗：{backup_e}")
 
 @app.route('/health', methods=['GET'])
 def health_check():
