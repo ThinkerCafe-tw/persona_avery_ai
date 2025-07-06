@@ -48,8 +48,10 @@ def home():
 def health_check():
     try:
         # 測試資料庫連接
-        memory_system.test_connection()
-        return {"status": "healthy", "message": "Lumi AI 運行正常"}, 200
+        if memory_system._ensure_connection():
+            return {"status": "healthy", "message": "Lumi AI 運行正常"}, 200
+        else:
+            return {"status": "unhealthy", "error": "資料庫連接失敗"}, 500
     except Exception as e:
         logger.error(f"❌ 健康檢查失敗: {e}")
         return {"status": "unhealthy", "error": str(e)}, 500
