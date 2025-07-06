@@ -28,10 +28,8 @@ if not channel_access_token or not channel_secret:
     logger.error("❌ LINE Bot 環境變數未設定")
     raise ValueError("LINE_CHANNEL_ACCESS_TOKEN 和 LINE_CHANNEL_SECRET 必須設定")
 
-# 1. 建立 Configuration & ApiClient - 正確的 v3 寫法
+# 初始化 LINE Bot API - 使用 context manager
 configuration = Configuration(access_token=channel_access_token)
-api_client = ApiClient(configuration)
-line_bot_api = MessagingApi(api_client)
 handler = WebhookHandler(channel_secret)
 
 # 初始化記憶系統
@@ -91,15 +89,17 @@ def handle_message(event):
         
         logger.info(f"🤖 Lumi 回覆內容： {lumi_response}")
         
-        # 2. 回覆訊息時請這樣用 - 正確的 v3 寫法
+        # 使用 context manager 發送回應 - 正確的 v3 寫法
         logger.info("📤 開始發送回應...")
         try:
-            reply_msg = ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=[TextMessage(text=lumi_response)]
-            )
-            line_bot_api.reply_message(reply_msg)
-            logger.info("✅ 訊息發送成功")
+            with ApiClient(configuration) as api_client:
+                line_bot_api = MessagingApi(api_client)
+                reply_msg = ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=lumi_response)]
+                )
+                line_bot_api.reply_message(reply_msg)
+                logger.info("✅ 訊息發送成功")
         except Exception as e:
             logger.error(f"❌ 發送失敗：{e}")
             logger.error(f"❌ 錯誤類型：{type(e)}")
