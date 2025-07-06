@@ -71,41 +71,27 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    print("🎯 handle_message 函數被呼叫！")
-    user_message = event.message.text
-    print("✅ 收到 LINE 訊息:", user_message) 
-    print(f"🔍 用戶 ID: {event.source.user_id}")
-    print(f"🔍 訊息類型: {type(event.message)}")
-
-    if get_lumi_response:
-        try:
-            print("🤖 開始呼叫 AI 邏輯...")
-            reply_message = get_lumi_response(user_message, event.source.user_id)
-            print("🤖 Lumi 回覆內容:", reply_message)
-        except Exception as e:
-            print(f"❌ AI 回應生成失敗: {e}")
-            import traceback
-            print(f"❌ AI 錯誤詳情: {traceback.format_exc()}")
-            reply_message = "抱歉，我現在有點忙，稍後再試試吧！"
-    else:
-        print("❌ get_lumi_response 函數未載入")
-        reply_message = "抱歉，AI 系統正在初始化中，請稍後再試！"
-    
-    # 使用 v3 API 發送回覆
-    from linebot.v3.messaging import ReplyMessageRequest
-    
+    print("=== handle_message 進來了 ===")
     try:
+        print(f"event: {event}")
+        user_message = event.message.text
+        print("使用者訊息：", user_message)
+        if get_lumi_response:
+            reply_message = get_lumi_response(user_message, event.source.user_id)
+            print("Lumi 回覆內容：", reply_message)
+        else:
+            reply_message = "抱歉，AI 系統正在初始化中，請稍後再試！"
+        # 發送回覆
+        from linebot.v3.messaging import ReplyMessageRequest
         request = ReplyMessageRequest(
             reply_token=event.reply_token,
             messages=[TextMessage(text=reply_message)]
         )
-        print("==> 準備送出 reply:", reply_message)
+        print("準備送出 LINE 回覆", request)
         line_bot_api.reply_message(request)
-        print("==> reply_message 已發送")
+        print("✅ 發送成功")
     except Exception as e:
-        print("❌ 發送 LINE 訊息失敗:", e)
-        import traceback
-        print(f"❌ 發送錯誤詳情: {traceback.format_exc()}")
+        print(f"❌ 發送失敗：{e}")
 
 @app.route('/health', methods=['GET'])
 def health_check():
