@@ -81,11 +81,13 @@ def handle_message(event):
 @app.route('/health', methods=['GET'])
 def health_check():
     print("✅ /health 路由被呼叫")
+    print("✅ 健康檢查通過")
     return 'OK', 200
 
 @app.route("/", methods=['GET'])
 def home():
     """首頁端點"""
+    print("✅ / 路由被呼叫")
     return {
         "message": "Lumi AI 服務運行中",
         "features": [
