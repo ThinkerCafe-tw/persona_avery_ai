@@ -24,6 +24,13 @@ app = Flask(__name__)
 import sys; print("✅ Flask app 啟動，Python 版本:", sys.version)
 print("✅ Flask app 已初始化，準備等待 Gunicorn 啟動")
 
+# 加強啟動日誌
+print("🔍 檢查環境變數...")
+print(f"🔍 LINE_CHANNEL_SECRET: {'已設定' if os.getenv('LINE_CHANNEL_SECRET') else '未設定'}")
+print(f"🔍 LINE_CHANNEL_ACCESS_TOKEN: {'已設定' if os.getenv('LINE_CHANNEL_ACCESS_TOKEN') else '未設定'}")
+print(f"🔍 DATABASE_URL: {'已設定' if os.getenv('DATABASE_URL') else '未設定'}")
+print(f"🔍 OPENAI_API_KEY: {'已設定' if os.getenv('OPENAI_API_KEY') else '未設定'}")
+
 # 顯示端口資訊
 port = os.getenv('PORT', '8080')
 print(f"✅ 應用程式將在端口 {port} 上運行")

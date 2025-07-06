@@ -37,5 +37,5 @@ USER app
 # 暴露端口
 EXPOSE 8080
 
-# 啟動應用程式 - 使用環境變數 PORT
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8080} app:app"]
+# 啟動應用程式 - 使用環境變數 PORT，加強日誌
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8080} --workers=1 --log-level=debug --timeout=120 app:app"]
