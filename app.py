@@ -3,7 +3,8 @@ from dotenv import load_dotenv
 from flask import Flask, request, abort
 
 # 使用 LINE Bot SDK v3 正確導入方式
-from linebot.v3.messaging import MessagingApi, TextMessage, Configuration, ReplyMessageRequest
+from linebot.v3.messaging import MessagingApi, TextMessage, ReplyMessageRequest
+from linebot.v3.messaging.configuration import Configuration
 from linebot.v3.webhook import WebhookHandler
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from linebot.v3.exceptions import InvalidSignatureError
@@ -46,7 +47,9 @@ if CHANNEL_ACCESS_TOKEN is None:
     print('Specify LINE_CHANNEL_ACCESS_TOKEN as environment variable.')
     exit(1)
 
-configuration = Configuration(access_token=CHANNEL_ACCESS_TOKEN)
+configuration = Configuration(
+    access_token=CHANNEL_ACCESS_TOKEN,
+)
 line_bot_api = MessagingApi(configuration)
 handler = WebhookHandler(CHANNEL_SECRET)
 
