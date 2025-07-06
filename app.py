@@ -4,8 +4,8 @@ from flask import Flask, request, abort
 
 # 使用 LINE Bot SDK v3 正確導入方式
 from linebot.v3.messaging import MessagingApi, TextMessage, ReplyMessageRequest
-from linebot.v3.webhook import WebhookHandler
 from linebot.v3.messaging.configuration import Configuration
+from linebot.v3.webhook import WebhookHandler
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from linebot.v3.exceptions import InvalidSignatureError
 print("✅ 使用 LINE Bot SDK v3 正確導入方式")
@@ -91,7 +91,6 @@ def callback():
 
 @handler.add(MessageEvent)
 def handle_message(event):
-    # print event
     print("=== handle_message 進來了 ===")
     try:
         print(f"event: {event}")
@@ -99,13 +98,14 @@ def handle_message(event):
         if isinstance(event.message, TextMessageContent):
             user_message = event.message.text
             print("使用者訊息：", user_message)
+            
             if get_lumi_response:
                 reply_message = get_lumi_response(user_message, event.source.user_id)
                 print("Lumi 回覆內容：", reply_message)
             else:
                 reply_message = "抱歉，AI 系統正在初始化中，請稍後再試！"
             
-            # 發送回覆 - 使用官方正確格式
+            # 使用官方正確格式發送回覆
             line_bot_api.reply_message(
                 ReplyMessageRequest(
                     reply_token=event.reply_token,
@@ -120,19 +120,6 @@ def handle_message(event):
         print(f"❌ 錯誤類型：{type(e)}")
         import traceback
         print(f"❌ 詳細錯誤：{traceback.format_exc()}")
-        
-        # 嘗試備用發送方式 - 使用官方正確格式
-        try:
-            print("🔄 嘗試備用發送方式...")
-            line_bot_api.reply_message(
-                ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=[TextMessage(text=reply_message)]
-                )
-            )
-            print("✅ 備用發送成功")
-        except Exception as backup_e:
-            print(f"❌ 備用發送也失敗：{backup_e}")
 
 @app.route('/health', methods=['GET'])
 def health_check():
