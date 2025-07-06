@@ -4,8 +4,8 @@ from flask import Flask, request, abort
 
 # 使用 LINE Bot SDK v3 正確導入方式
 from linebot.v3.messaging import MessagingApi, TextMessage, ReplyMessageRequest
-from linebot.v3.messaging.configuration import Configuration
 from linebot.v3.webhook import WebhookHandler
+from linebot.v3.messaging.configuration import Configuration
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from linebot.v3.exceptions import InvalidSignatureError
 print("✅ 使用 LINE Bot SDK v3 正確導入方式")
@@ -47,8 +47,9 @@ if CHANNEL_ACCESS_TOKEN is None:
     print('Specify LINE_CHANNEL_ACCESS_TOKEN as environment variable.')
     exit(1)
 
+# 這才是 v3 正規初始化方式！
 configuration = Configuration(
-    access_token=CHANNEL_ACCESS_TOKEN,
+    access_token=CHANNEL_ACCESS_TOKEN
 )
 line_bot_api = MessagingApi(configuration)
 handler = WebhookHandler(CHANNEL_SECRET)
@@ -103,13 +104,14 @@ def handle_message(event):
                 print("Lumi 回覆內容：", reply_message)
             else:
                 reply_message = "抱歉，AI 系統正在初始化中，請稍後再試！"
-            # 發送回覆
-            request = ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=[TextMessage(text=reply_message)]
+            
+            # 發送回覆 - 使用官方正確格式
+            line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=reply_message)]
+                )
             )
-            print("準備送出 LINE 回覆", request)
-            line_bot_api.reply_message(request)
             print("✅ 發送成功")
         else:
             print("❌ 非文字訊息，忽略")
@@ -119,14 +121,15 @@ def handle_message(event):
         import traceback
         print(f"❌ 詳細錯誤：{traceback.format_exc()}")
         
-        # 嘗試備用發送方式
+        # 嘗試備用發送方式 - 使用官方正確格式
         try:
             print("🔄 嘗試備用發送方式...")
-            backup_request = ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=[TextMessage(text=reply_message)]
+            line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=reply_message)]
+                )
             )
-            line_bot_api.reply_message(backup_request)
             print("✅ 備用發送成功")
         except Exception as backup_e:
             print(f"❌ 備用發送也失敗：{backup_e}")
