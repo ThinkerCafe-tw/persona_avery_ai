@@ -54,37 +54,46 @@ def health_check():
         logger.error(f"❌ 健康檢查失敗: {e}")
         return {"status": "unhealthy", "error": str(e)}, 500
 
-@app.route("/webhook", methods=['POST'])
+@app.route("/callback", methods=['POST'])
 def callback():
     # 獲取 X-Line-Signature header
     signature = request.headers['X-Line-Signature']
 
     # 獲取 request body
     body = request.get_data(as_text=True)
-    logger.info("✅ webhook 收到請求")
+    logger.info("✅ LINE webhook 收到請求")
+    logger.info(f"📝 請求內容長度: {len(body)}")
 
     try:
         handler.handle(body, signature)
+        logger.info("✅ webhook 處理成功")
     except InvalidSignatureError:
         logger.error("❌ 簽名驗證失敗")
         abort(400)
+    except Exception as e:
+        logger.error(f"❌ webhook 處理失敗: {e}")
+        abort(500)
 
     return 'OK'
 
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
+    logger.info("=== 開始處理訊息 ===")
     try:
         user_id = event.source.user_id
         user_message = event.message.text
         
         logger.info(f"📨 收到用戶 {user_id} 的訊息: {user_message}")
+        logger.info(f"🔑 reply_token: {event.reply_token}")
         
         # 使用 AI 邏輯生成回應
+        logger.info("🤖 開始生成 AI 回應...")
         lumi_response = ai_logic.generate_response(user_id, user_message)
         
         logger.info(f"🤖 Lumi 回覆內容： {lumi_response}")
         
         # 發送回應
+        logger.info("📤 開始發送回應...")
         try:
             reply_request = ReplyMessageRequest(
                 reply_token=event.reply_token,
@@ -99,6 +108,10 @@ def handle_message(event):
             
     except Exception as e:
         logger.error(f"❌ 處理訊息時發生錯誤: {e}")
+        import traceback
+        logger.error(f"❌ 詳細錯誤堆疊: {traceback.format_exc()}")
+    
+    logger.info("=== 訊息處理結束 ===")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
