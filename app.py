@@ -43,44 +43,61 @@ handler = WebhookHandler(CHANNEL_SECRET)
 
 @app.route("/callback", methods=['POST'])
 def callback():
+    print("=== LINE Webhook 被呼叫 ===")
     # get X-Line-Signature header value
     signature = request.headers['X-Line-Signature']
+    print(f"✅ 收到 LINE 簽名: {signature[:20]}...")
 
     # get request body as text
     body = request.get_data(as_text=True)
+    print(f"✅ 收到 webhook 內容: {body[:100]}...")
     app.logger.info("Request body: " + body)
 
     # handle webhook body
     try:
         handler.handle(body, signature)
+        print("✅ webhook 處理成功")
     except InvalidSignatureError:
+        print("❌ LINE 簽名驗證失敗")
         abort(400)
+    except Exception as e:
+        print(f"❌ webhook 處理失敗: {e}")
+        abort(500)
 
     return 'OK'
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
+    print("=== 處理 LINE 訊息 ===")
     user_message = event.message.text
-    print("✅ 收到 LINE 訊息:", user_message) 
+    user_id = event.source.user_id
+    print(f"✅ 收到 LINE 訊息: {user_message}")
+    print(f"✅ 用戶 ID: {user_id}")
 
     if get_lumi_response:
         try:
-            reply_message = get_lumi_response(user_message, event.source.user_id)
-            print("🤖 Lumi 回覆內容:", reply_message)
+            print("🤖 開始生成 AI 回應...")
+            reply_message = get_lumi_response(user_message, user_id)
+            print(f"🤖 Lumi 回覆內容: {reply_message}")
         except Exception as e:
             print(f"❌ AI 回應生成失敗: {e}")
             reply_message = "抱歉，我現在有點忙，稍後再試試吧！"
     else:
+        print("❌ AI 邏輯模組未載入")
         reply_message = "抱歉，AI 系統正在初始化中，請稍後再試！"
     
     # 使用 v3 API 發送回覆
-    from linebot.v3.messaging import ReplyMessageRequest
-    
-    request = ReplyMessageRequest(
-        reply_token=event.reply_token,
-        messages=[TextMessage(text=reply_message)]
-    )
-    line_bot_api.reply_message(request)
+    try:
+        from linebot.v3.messaging import ReplyMessageRequest
+        
+        request = ReplyMessageRequest(
+            reply_token=event.reply_token,
+            messages=[TextMessage(text=reply_message)]
+        )
+        line_bot_api.reply_message(request)
+        print("✅ 訊息回覆成功")
+    except Exception as e:
+        print(f"❌ 訊息回覆失敗: {e}")
 
 @app.route('/health', methods=['GET'])
 def health_check():
