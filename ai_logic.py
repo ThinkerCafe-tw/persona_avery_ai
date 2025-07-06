@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-import openai
+from openai import OpenAI
 from datetime import datetime
 import json
 from simple_memory import SimpleLumiMemory
@@ -8,7 +8,7 @@ from prompt_variations import prompt_variations
 import random
 
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # 初始化簡化記憶系統
 try:
@@ -23,7 +23,7 @@ user_emotion_states = {}
 def generate_daily_summary(user_id):
     prompt = f"請根據今天與用戶 {user_id} 的所有對話，生成一段簡短的日記摘要。"
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}]
         )
@@ -157,7 +157,7 @@ def get_lumi_response(message, user_id, persona_type=None):
             return response
     
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}]
         )
