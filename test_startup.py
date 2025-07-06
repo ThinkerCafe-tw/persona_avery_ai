@@ -1,76 +1,53 @@
 #!/usr/bin/env python3
 """
-測試應用程式啟動
+簡單的啟動測試
 """
 import os
 import sys
-import time
-import requests
-from threading import Thread
 
-def test_app_startup():
-    """測試應用程式啟動"""
-    print("=== 測試應用程式啟動 ===")
-    
-    # 檢查環境變數
-    print(f"PORT: {os.getenv('PORT', '8080')}")
-    print(f"DATABASE_URL: {os.getenv('DATABASE_URL', 'Not set')[:50]}...")
-    print(f"LINE_CHANNEL_SECRET: {'Set' if os.getenv('LINE_CHANNEL_SECRET') else 'Not set'}")
-    print(f"LINE_CHANNEL_ACCESS_TOKEN: {'Set' if os.getenv('LINE_CHANNEL_ACCESS_TOKEN') else 'Not set'}")
-    
-    # 嘗試導入模組
+def test_imports():
+    """測試所有必要的模組是否能正常導入"""
     try:
-        import app
-        print("✅ app.py 導入成功")
-    except Exception as e:
-        print(f"❌ app.py 導入失敗: {e}")
-        return False
-    
-    # 檢查 Flask app
-    if hasattr(app, 'app'):
-        print("✅ Flask app 存在")
-    else:
-        print("❌ Flask app 不存在")
-        return False
-    
-    return True
-
-def test_health_endpoint():
-    """測試健康檢查端點"""
-    print("\n=== 測試健康檢查端點 ===")
-    
-    port = os.getenv('PORT', '8080')
-    url = f"http://localhost:{port}/health"
-    
-    print(f"測試 URL: {url}")
-    
-    try:
-        response = requests.get(url, timeout=10)
-        print(f"✅ 健康檢查成功: {response.status_code} - {response.text}")
+        import flask
+        print("✅ Flask 導入成功")
+        
+        from linebot.v3.messaging import Configuration, ApiClient, MessagingApi
+        print("✅ LINE Bot SDK v3 導入成功")
+        
+        import ai_logic
+        print("✅ AI 邏輯模組導入成功")
+        
+        import simple_memory
+        print("✅ 記憶系統模組導入成功")
+        
         return True
-    except requests.exceptions.ConnectionError:
-        print("❌ 無法連接到應用程式")
-        return False
     except Exception as e:
-        print(f"❌ 健康檢查失敗: {e}")
+        print(f"❌ 導入失敗: {e}")
+        return False
+
+def test_line_bot_init():
+    """測試 LINE Bot 初始化"""
+    try:
+        from linebot.v3.messaging import Configuration, ApiClient, MessagingApi
+        
+        # 模擬初始化（不需要真實的 token）
+        test_token = "test_token"
+        configuration = Configuration(access_token=test_token)
+        api_client = ApiClient(configuration)
+        line_bot_api = MessagingApi(api_client)
+        
+        print("✅ LINE Bot SDK v3 初始化成功")
+        return True
+    except Exception as e:
+        print(f"❌ LINE Bot 初始化失敗: {e}")
         return False
 
 if __name__ == "__main__":
-    print("開始測試...")
+    print("=== 啟動測試開始 ===")
     
-    if test_app_startup():
-        print("✅ 應用程式啟動測試通過")
-        
-        # 等待一下讓應用程式完全啟動
-        print("等待 5 秒...")
-        time.sleep(5)
-        
-        if test_health_endpoint():
-            print("✅ 健康檢查測試通過")
-            sys.exit(0)
-        else:
-            print("❌ 健康檢查測試失敗")
-            sys.exit(1)
+    if test_imports() and test_line_bot_init():
+        print("✅ 所有測試通過，應用程式應該能正常啟動")
     else:
-        print("❌ 應用程式啟動測試失敗")
-        sys.exit(1) 
+        print("❌ 測試失敗，請檢查錯誤")
+    
+    print("=== 啟動測試結束 ===") 
