@@ -2,7 +2,6 @@ import os
 import logging
 from flask import Flask, request, abort
 from linebot.v3.messaging import (
-    Configuration,
     MessagingApi,
     ReplyMessageRequest,
     TextMessage
@@ -32,9 +31,8 @@ if not channel_access_token or not channel_secret:
     logger.error("❌ LINE Bot 環境變數未設定")
     raise ValueError("LINE_CHANNEL_ACCESS_TOKEN 和 LINE_CHANNEL_SECRET 必須設定")
 
-# 初始化 LINE Bot API
-configuration = Configuration(access_token=channel_access_token)
-line_bot_api = MessagingApi(configuration)
+# 初始化 LINE Bot API - 使用更簡單的方式
+line_bot_api = MessagingApi(access_token=channel_access_token)
 handler = WebhookHandler(channel_secret)
 
 # 初始化記憶系統
