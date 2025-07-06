@@ -60,18 +60,25 @@ def get_persona_prompt(persona_type):
     return base_info
 
 def get_lumi_response(message, user_id, persona_type=None):
+    print(f"\n=== 記憶流程開始 ===")
+    print(f"[記憶] 收到訊息: {message}")
+    print(f"[記憶] 用戶ID: {user_id}")
+    
     # 日期/時間問句判斷
     date_keywords = ["今天幾號", "今天日期", "現在幾點", "今天是什麼時候", "現在時間"]
     if any(kw in message for kw in date_keywords):
-        now = datetime.datetime.now()
+        now = datetime.now()
         if "幾點" in message or "時間" in message:
             return f"現在時間是 {now.strftime('%H:%M:%S')}"
         else:
             return f"今天日期是 {now.strftime('%Y-%m-%d')}"
+    
     # 查詢 profile name
     profile_name = None
     if hasattr(memory_manager, 'get_user_profile_name'):
         profile_name = memory_manager.get_user_profile_name(user_id)
+        print(f"[記憶] 查詢到的用戶名稱: {profile_name}")
+    
     # 多樣化誠實回應模板
     honest_templates = [
         "很高興認識你！如果你願意，可以告訴我你的名字，我會記住喔。",
@@ -80,53 +87,94 @@ def get_lumi_response(message, user_id, persona_type=None):
         "抱歉，我還沒有你的個人資訊，但很期待認識你！",
         "我目前記憶功能有限，只能記錄當下這次對話。"
     ]
+    
     prompt = get_persona_prompt(persona_type) or ""
     memory_context = ""
+    
     if memory_manager:
         try:
+            print(f"[記憶] 開始查詢用戶 {user_id} 的記憶...")
+            
+            # 查詢最近記憶
             recent_memories = memory_manager.get_recent_memories(user_id, limit=3)
-            print(f"[LOG] recent_memories: {recent_memories}")
+            print(f"[記憶] 最近記憶數量: {len(recent_memories)}")
+            if recent_memories:
+                print(f"[記憶] 最近記憶內容: {recent_memories}")
+            
+            # 查詢相似記憶
             similar_memories_list = memory_manager.get_similar_memories(user_id, message, limit=3)
-            print(f"[LOG] similar_memories_list: {similar_memories_list}")
+            print(f"[記憶] 相似記憶數量: {len(similar_memories_list)}")
+            if similar_memories_list:
+                print(f"[記憶] 相似記憶內容: {similar_memories_list}")
+            
+            # 查詢個人資料記憶
             profile_memories_list = memory_manager.get_user_profile_memories(user_id, limit=5)
-            print(f"[LOG] profile_memories_list: {profile_memories_list}")
+            print(f"[記憶] 個人資料記憶數量: {len(profile_memories_list)}")
+            if profile_memories_list:
+                print(f"[記憶] 個人資料記憶內容: {profile_memories_list}")
+            
+            # 組合記憶上下文
             if recent_memories:
                 memory_context += "\n\n【最近的對話歷史】\n"
                 for m in recent_memories:
                     memory_context += f"用戶: {m.get('user_message', '')}\nLumi: {m.get('lumi_response', '')}\n"
+            
             if profile_memories_list:
                 memory_context += "\n\n【用戶個人資料】\n"
                 for m in profile_memories_list:
                     memory_context += f"{m.get('user_message', '')} → {m.get('lumi_response', '')}\n"
+            
             if similar_memories_list:
                 memory_context += "\n\n【相關歷史對話】\n"
                 for m in similar_memories_list:
                     memory_context += f"{m.get('user_message', '')} → {m.get('lumi_response', '')}\n"
+            
+            print(f"[記憶] 記憶上下文長度: {len(memory_context)}")
+            if memory_context:
+                print(f"[記憶] 記憶上下文內容: {memory_context[:200]}...")
+            else:
+                print("[記憶] 沒有找到任何記憶內容")
+                
         except Exception as e:
-            print(f"記憶檢索失敗: {e}")
+            print(f"[記憶] 記憶檢索失敗: {e}")
+    
     prompt += memory_context
     prompt += f"\n\n用戶訊息：{message}"
     prompt += "\n\n嚴格規定：你只能根據上方記憶內容回應，沒有就誠實說不知道。禁止假裝認識用戶、禁止使用『又見到你』『再次見到你』等語句，除非你真的有記憶。不要編造用戶資訊，也不要假裝記得用戶。"
-    print(f"[LOG] 最終送給 openai 的 prompt:\n{prompt}")
+    
+    print(f"[記憶] 最終 prompt 長度: {len(prompt)}")
+    print(f"[記憶] 最終 prompt 前200字: {prompt[:200]}...")
+    
     # 處理「你記得我是誰嗎」等問題
     if any(kw in message for kw in ["你記得我是誰", "你知道我是誰", "我是誰"]):
         if profile_name:
-            return f"你是{profile_name}，我有記住你的名字喔！很高興再次和你聊天。"
+            response = f"你是{profile_name}，我有記住你的名字喔！很高興再次和你聊天。"
+            print(f"[記憶] 回覆用戶身份問題: {response}")
+            return response
         else:
-            return random.choice(honest_templates)
+            response = random.choice(honest_templates)
+            print(f"[記憶] 回覆身份問題(無記憶): {response}")
+            return response
+    
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}]
         )
         reply_message = response.choices[0].message.content.strip()
+        print(f"[記憶] AI 生成回覆: {reply_message}")
     except Exception as e:
-        print(f"錯誤: {e}")
+        print(f"[記憶] AI 回應生成錯誤: {e}")
         reply_message = "嗨！我是Lumi，不好意思剛剛恍神了一下，可以再說一次嗎？"
+    
+    # 儲存對話記憶
     if memory_manager and reply_message:
         try:
+            print(f"[記憶] 開始儲存對話記憶...")
             memory_manager.store_conversation_memory(user_id, message, reply_message, persona_type)
-            print(f" 對話記憶已存儲: {user_id}")
+            print(f"[記憶] 對話記憶儲存成功: user_id={user_id}")
         except Exception as e:
-            print(f" 記憶存儲失敗: {e}")
+            print(f"[記憶] 記憶儲存失敗: {e}")
+    
+    print(f"=== 記憶流程結束 ===\n")
     return reply_message

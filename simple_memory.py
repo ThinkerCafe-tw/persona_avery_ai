@@ -160,67 +160,103 @@ class SimpleLumiMemory:
 
     def get_user_profile_name(self, user_id):
         """查詢 user_id 最新的 profile name"""
+        print(f"\n=== 用戶名稱查詢開始 ===")
+        print(f"[用戶名稱] 查詢用戶: {user_id}")
+        
         if not self._ensure_connection():
+            print("❌ [用戶名稱] 資料庫連接未建立")
             return None
+        
         try:
             with self.conn.cursor() as cur:
+                print(f"[用戶名稱] 執行 SQL SELECT...")
                 cur.execute("""
                     SELECT user_message FROM lumi_memories
                     WHERE user_id = %s AND emotion_tag = 'profile'
                     ORDER BY timestamp DESC LIMIT 1;
                 """, (user_id,))
                 row = cur.fetchone()
+                print(f"[用戶名稱] SQL 查詢完成，結果: {row}")
+                
                 if row:
                     # user_message 可能是「我是XXX」或「我叫XXX」
                     msg = row[0]
+                    print(f"[用戶名稱] 原始訊息: {msg}")
+                    
                     for prefix in ["我是", "我叫", "我的名字是"]:
                         if msg.startswith(prefix):
-                            return msg[len(prefix):].strip()
+                            name = msg[len(prefix):].strip()
+                            print(f"[用戶名稱] 找到名稱: {name}")
+                            print(f"=== 用戶名稱查詢結束 ===\n")
+                            return name
+                    
+                    print(f"[用戶名稱] 未找到標準前綴，直接返回: {msg}")
+                    print(f"=== 用戶名稱查詢結束 ===\n")
                     return msg
+                else:
+                    print(f"[用戶名稱] 未找到用戶名稱記錄")
+                    print(f"=== 用戶名稱查詢結束 ===\n")
+                    return None
         except Exception as e:
-            print(f"❌ [LOG] 查詢 profile name 失敗: {e}")
-        return None
+            print(f"❌ [用戶名稱] 查詢 profile name 失敗: {e}")
+            print(f"=== 用戶名稱查詢結束 ===\n")
+            return None
 
     def store_conversation_memory(self, user_id, user_message, lumi_response, emotion_tag=None):
-        print(f"[LOG] 儲存記憶: user_id={user_id}, user_message={user_message}, lumi_response={lumi_response}, emotion_tag={emotion_tag}")
+        print(f"\n=== 記憶儲存開始 ===")
+        print(f"[記憶儲存] user_id: {user_id}")
+        print(f"[記憶儲存] user_message: {user_message}")
+        print(f"[記憶儲存] lumi_response: {lumi_response}")
+        print(f"[記憶儲存] emotion_tag: {emotion_tag}")
+        
         # 自動偵測 profile 記憶
         for prefix in ["我是", "我叫", "我的名字是"]:
             if isinstance(user_message, str) and user_message.strip().startswith(prefix):
                 name = user_message.strip()[len(prefix):].strip()
                 if name:
+                    print(f"[記憶儲存] 偵測到 profile 記憶: {name}")
                     self.store_user_profile_name(user_id, name)
+                    break
+        
         if not self._ensure_connection():
-            print("❌ [LOG] 無法儲存記憶：Railway pgvector 服務連接失敗")
+            print("❌ [記憶儲存] 無法儲存記憶：Railway pgvector 服務連接失敗")
             return
+        
+        print(f"[記憶儲存] 開始生成嵌入...")
         embedding = self._get_embedding(user_message)
         if embedding is None:
-            print("❌ [LOG] 無法生成嵌入，記憶未儲存")
+            print("❌ [記憶儲存] 無法生成嵌入，記憶未儲存")
             return
+        
+        print(f"[記憶儲存] 嵌入生成成功，長度: {len(embedding)}")
+        
         try:
             with self.conn.cursor() as cur:
+                print(f"[記憶儲存] 執行 SQL INSERT...")
                 cur.execute("""
                     INSERT INTO lumi_memories (user_id, user_message, lumi_response, emotion_tag, embedding)
                     VALUES (%s, %s, %s, %s, %s);
                 """, (user_id, user_message, lumi_response, emotion_tag, embedding))
                 self.conn.commit()
-            print(f"✅ [LOG] 已儲存用戶 {user_id[:8]}... 的對話記憶到 Railway pgvector")
+                print(f"✅ [記憶儲存] 已成功儲存用戶 {user_id[:8]}... 的對話記憶到 Railway pgvector")
         except Exception as e:
-            print(f"❌ [LOG] 儲存記憶到 Railway pgvector 失敗: {e}")
+            print(f"❌ [記憶儲存] 儲存記憶到 Railway pgvector 失敗: {e}")
             self._ensure_connection()
+        
+        print(f"=== 記憶儲存結束 ===\n")
 
     def get_recent_memories(self, user_id, limit=5): # 這裡的 limit 應該是從 PGVector 檢索的數量
+        print(f"\n=== 記憶讀取開始 ===")
+        print(f"[記憶讀取] 查詢用戶: {user_id}")
+        print(f"[記憶讀取] 查詢數量: {limit}")
+        
         if not self._ensure_connection():
-            print("警告: 資料庫連接未建立，無法檢索記憶。")
+            print("❌ [記憶讀取] 資料庫連接未建立，無法檢索記憶。")
             return []
         
-        # 這裡的「recent」可以有多種定義：
-        # 1. 簡單地按時間排序取最近的
-        # 2. 根據當前用戶的訊息進行相似度搜尋
-        # 為了簡化，我們暫時先實現按時間排序取最近的。
-        # 如果需要相似度搜尋，get_recent_memories 需要接收一個 query_message 參數。
-
         try:
             with self.conn.cursor() as cur:
+                print(f"[記憶讀取] 執行 SQL SELECT...")
                 cur.execute("""
                     SELECT user_message, lumi_response, emotion_tag, timestamp
                     FROM lumi_memories
@@ -229,19 +265,27 @@ class SimpleLumiMemory:
                     LIMIT %s;
                 """, (user_id, limit))
                 rows = cur.fetchall()
+                print(f"[記憶讀取] SQL 查詢完成，找到 {len(rows)} 筆記錄")
                 
                 memories = []
-                for row in rows:
-                    memories.append({
+                for i, row in enumerate(rows):
+                    memory = {
                         'user_message': row[0],
                         'lumi_response': row[1],
                         'emotion_tag': row[2],
                         'timestamp': row[3].isoformat() # 轉換為 ISO 格式字串
-                    })
+                    }
+                    memories.append(memory)
+                    print(f"[記憶讀取] 記錄 {i+1}: {memory}")
+                
                 # 返回按時間正序排列的記憶，以便於對話上下文的組織
-                return memories[::-1] 
+                result = memories[::-1]
+                print(f"[記憶讀取] 返回 {len(result)} 筆記憶")
+                print(f"=== 記憶讀取結束 ===\n")
+                return result
         except Exception as e:
-            print(f"SimpleLumiMemory: 從 PGVector 檢索記憶失敗: {e}")
+            print(f"❌ [記憶讀取] 從 PGVector 檢索記憶失敗: {e}")
+            print(f"=== 記憶讀取結束 ===\n")
             return []
 
     def get_similar_memories(self, user_id, query_message, limit=5, similarity_threshold=0.7):
