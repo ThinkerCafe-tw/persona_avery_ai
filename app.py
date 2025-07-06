@@ -90,7 +90,7 @@ def handle_message(event):
         
         # 使用 AI 邏輯生成回應
         logger.info("🤖 開始生成 AI 回應...")
-        lumi_response = ai_logic.generate_response(user_id, user_message)
+        lumi_response = ai_logic.get_lumi_response(user_message, user_id)
         
         logger.info(f"🤖 Lumi 回覆內容： {lumi_response}")
         
