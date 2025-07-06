@@ -69,7 +69,7 @@ class SimpleLumiMemory:
                         lumi_response TEXT NOT NULL,
                         emotion_tag TEXT,
                         timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                        embedding VECTOR(768),
+                        embedding VECTOR(1536),
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                     );
                 """)
