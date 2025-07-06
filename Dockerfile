@@ -38,4 +38,4 @@ USER app
 EXPOSE 8080
 
 # 啟動應用程式
-CMD ["sh", "-c", "echo \"==> PORT: $PORT\" && ls -l /app && which gunicorn && gunicorn --version && gunicorn -b 0.0.0.0:${PORT:-8080} app:app"]
+CMD ["sh", "-c", "echo \"=== 啟動調試資訊 ===\" && echo \"PORT: $PORT\" && echo \"PWD: $(pwd)\" && ls -la && echo \"=== 檢查 Gunicorn ===\" && which gunicorn && gunicorn --version && echo \"=== 啟動 Gunicorn ===\" && exec gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 1 --timeout 120 --access-logfile - --error-logfile - --log-level debug app:app"]

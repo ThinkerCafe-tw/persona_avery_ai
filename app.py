@@ -23,6 +23,10 @@ app = Flask(__name__)
 import sys; print("✅ Flask app 啟動，Python 版本:", sys.version)
 print("✅ Flask app 已初始化，準備等待 Gunicorn 啟動")
 
+# 顯示端口資訊
+port = os.getenv('PORT', '8080')
+print(f"✅ 應用程式將在端口 {port} 上運行")
+
 # Get Channel Secret and Channel Access Token from environment variables
 CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')
 CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
@@ -97,4 +101,9 @@ def home():
             "LINE Bot 整合"
         ],
         "status": "active"
-    }, 200 
+    }, 200
+
+# 如果直接運行此檔案，啟動 Flask 開發伺服器
+if __name__ == "__main__":
+    print(f"🚀 直接啟動 Flask 開發伺服器，端口: {port}")
+    app.run(host='0.0.0.0', port=int(port), debug=False) 
