@@ -365,7 +365,7 @@ class SimpleLumiMemory:
                         'user_message': row[0],
                         'lumi_response': row[1],
                         'emotion_tag': row[2],
-                        'timestamp': row[3].isoformat()
+                        'timestamp': row[3].isoformat() if row[3] else None
                     })
                 return memories
         except Exception as e:
@@ -404,7 +404,7 @@ class SimpleLumiMemory:
                         'user_message': row[0],
                         'lumi_response': row[1],
                         'emotion_tag': row[2],
-                        'timestamp': row[3].isoformat()
+                        'timestamp': row[3].isoformat() if row[3] else None
                     })
                 return memories
         except Exception as e:
@@ -435,7 +435,7 @@ class SimpleLumiMemory:
                         'user_message': row[0],
                         'lumi_response': row[1],
                         'emotion_tag': row[2],
-                        'timestamp': row[3].isoformat()
+                        'timestamp': row[3].isoformat() if row[3] else None
                     })
                 return memories
         except Exception as e:
@@ -510,7 +510,7 @@ class SimpleLumiMemory:
                         'user_message': row[0],
                         'lumi_response': row[1],
                         'emotion_tag': row[2],
-                        'timestamp': row[3].isoformat()
+                        'timestamp': row[3].isoformat() if row[3] else None
                     })
                 return memories
         except Exception as e:

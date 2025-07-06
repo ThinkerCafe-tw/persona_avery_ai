@@ -1,143 +1,108 @@
 import os
-from dotenv import load_dotenv
+import logging
 from flask import Flask, request, abort
+from linebot.v3 import (
+    WebhookHandler,
+    LineBotApi
+)
+from linebot.v3.exceptions import (
+    InvalidSignatureError
+)
+from linebot.v3.messaging import (
+    Configuration,
+    MessagingApi,
+    ReplyMessageRequest,
+    TextMessage
+)
+from linebot.v3.webhooks import (
+    MessageEvent,
+    TextMessageContent
+)
+import ai_logic
+import simple_memory
 
-# 使用 LINE Bot SDK v3 正確導入方式
-from linebot.v3.messaging import MessagingApi, TextMessage, ReplyMessageRequest
-from linebot.v3.messaging.configuration import Configuration
-from linebot.v3.webhook import WebhookHandler
-from linebot.v3.webhooks import MessageEvent, TextMessageContent
-from linebot.v3.exceptions import InvalidSignatureError
-print("✅ 使用 LINE Bot SDK v3 正確導入方式")
-
-# Import your AI logic
-try:
-    from ai_logic import get_lumi_response
-    print("✅ AI 邏輯模組導入成功")
-except Exception as e:
-    print(f"⚠️ AI 邏輯模組導入失敗: {e}")
-    get_lumi_response = None
-
-# Load environment variables from .env file
-load_dotenv()
+# 設定日誌
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-import sys; print("✅ Flask app 啟動，Python 版本:", sys.version)
-print("✅ Flask app 已初始化，準備等待 Gunicorn 啟動")
 
-# 加強啟動日誌
-print("🔍 檢查環境變數...")
-print(f"🔍 LINE_CHANNEL_SECRET: {'已設定' if os.getenv('LINE_CHANNEL_SECRET') else '未設定'}")
-print(f"🔍 LINE_CHANNEL_ACCESS_TOKEN: {'已設定' if os.getenv('LINE_CHANNEL_ACCESS_TOKEN') else '未設定'}")
-print(f"🔍 DATABASE_URL: {'已設定' if os.getenv('DATABASE_URL') else '未設定'}")
-print(f"🔍 OPENAI_API_KEY: {'已設定' if os.getenv('OPENAI_API_KEY') else '未設定'}")
+# LINE Bot 設定
+channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
+channel_secret = os.getenv('LINE_CHANNEL_SECRET')
 
-# 顯示端口資訊
-port = os.getenv('PORT', '8080')
-print(f"✅ 應用程式將在端口 {port} 上運行")
+if not channel_access_token or not channel_secret:
+    logger.error("❌ LINE Bot 環境變數未設定")
+    raise ValueError("LINE_CHANNEL_ACCESS_TOKEN 和 LINE_CHANNEL_SECRET 必須設定")
 
-# Get Channel Secret and Channel Access Token from environment variables
-CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')
-CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
-
-if CHANNEL_SECRET is None:
-    print('Specify LINE_CHANNEL_SECRET as environment variable.')
-    exit(1)
-if CHANNEL_ACCESS_TOKEN is None:
-    print('Specify LINE_CHANNEL_ACCESS_TOKEN as environment variable.')
-    exit(1)
-
-# 這才是 v3 正規初始化方式！
-configuration = Configuration(
-    access_token=CHANNEL_ACCESS_TOKEN
-)
+# 初始化 LINE Bot API
+configuration = Configuration(access_token=channel_access_token)
 line_bot_api = MessagingApi(configuration)
-handler = WebhookHandler(CHANNEL_SECRET)
+handler = WebhookHandler(channel_secret)
 
-@app.route("/callback", methods=['POST'])
+# 初始化記憶系統
+memory_system = simple_memory.SimpleLumiMemory()
+
+@app.route("/")
+def home():
+    return "Lumi AI 正在運行！🤖✨"
+
+@app.route("/health")
+def health_check():
+    try:
+        # 測試資料庫連接
+        memory_system.test_connection()
+        return {"status": "healthy", "message": "Lumi AI 運行正常"}, 200
+    except Exception as e:
+        logger.error(f"❌ 健康檢查失敗: {e}")
+        return {"status": "unhealthy", "error": str(e)}, 500
+
+@app.route("/webhook", methods=['POST'])
 def callback():
-    print("=== LINE Webhook 被呼叫 ===")
+    # 獲取 X-Line-Signature header
     signature = request.headers['X-Line-Signature']
-    body = request.get_data(as_text=True)
-    app.logger.info("Request body: " + body)
-    print("==== Raw body ====")
-    print(body)
-    
-    # 這裡加入直接 parse 並印出 events
-    import json
-    try:
-        events = json.loads(body).get("events", [])
-        print("==== Events ====")
-        print(events)
-    except Exception as e:
-        print("== 解析 events 失敗 ==")
-        print(e)
 
-    # handle webhook body
+    # 獲取 request body
+    body = request.get_data(as_text=True)
+    logger.info("✅ webhook 收到請求")
+
     try:
-        print("🔍 開始處理 webhook...")
         handler.handle(body, signature)
-        print("✅ webhook 處理成功")
     except InvalidSignatureError:
-        print("❌ LINE 簽名驗證失敗")
+        logger.error("❌ 簽名驗證失敗")
         abort(400)
-    except Exception as e:
-        print(f"❌ webhook 處理失敗: {e}")
-        import traceback
-        print(f"❌ 詳細錯誤: {traceback.format_exc()}")
-        abort(500)
 
     return 'OK'
 
-@handler.add(MessageEvent)
+@handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
-    print("=== handle_message 進來了 ===")
     try:
-        print(f"event: {event}")
-        # 判斷訊息型態
-        if isinstance(event.message, TextMessageContent):
-            user_message = event.message.text
-            print("使用者訊息：", user_message)
-            
-            if get_lumi_response:
-                reply_message = get_lumi_response(user_message, event.source.user_id)
-                print("Lumi 回覆內容：", reply_message)
-            else:
-                reply_message = "抱歉，AI 系統正在初始化中，請稍後再試！"
-            
-            # 使用官方正確格式發送回覆
-            line_bot_api.reply_message(
-                ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=[TextMessage(text=reply_message)]
-                )
+        user_id = event.source.user_id
+        user_message = event.message.text
+        
+        logger.info(f"📨 收到用戶 {user_id} 的訊息: {user_message}")
+        
+        # 使用 AI 邏輯生成回應
+        lumi_response = ai_logic.generate_response(user_id, user_message)
+        
+        logger.info(f"🤖 Lumi 回覆內容： {lumi_response}")
+        
+        # 發送回應
+        try:
+            reply_request = ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[TextMessage(text=lumi_response)]
             )
-            print("✅ 發送成功")
-        else:
-            print("❌ 非文字訊息，忽略")
+            line_bot_api.reply_message(reply_request)
+            logger.info("✅ 訊息發送成功")
+        except Exception as e:
+            logger.error(f"❌ 發送失敗：{e}")
+            logger.error(f"❌ 錯誤類型：{type(e)}")
+            logger.error(f"❌ 詳細錯誤：{e}")
+            
     except Exception as e:
-        print(f"❌ 發送失敗：{e}")
-        print(f"❌ 錯誤類型：{type(e)}")
-        import traceback
-        print(f"❌ 詳細錯誤：{traceback.format_exc()}")
+        logger.error(f"❌ 處理訊息時發生錯誤: {e}")
 
-@app.route('/health', methods=['GET'])
-def health_check():
-    print("✅ /health 路由被呼叫")
-    print("✅ 健康檢查通過")
-    return 'OK', 200
-
-@app.route("/", methods=['GET'])
-def home():
-    """首頁端點"""
-    print("✅ / 路由被呼叫")
-    return {
-        "message": "Lumi AI 服務運行中",
-        "features": [
-            "長期記憶系統",
-            "Railway pgvector 服務",
-            "多元人格模式",
-            "LINE Bot 整合"
-        ],
-        "status": "active"
-    }, 200 
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port, debug=True) 
