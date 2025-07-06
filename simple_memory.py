@@ -60,9 +60,14 @@ class SimpleLumiMemory:
                 cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
                 self.conn.commit()
                 
-                # 創建記憶資料表（Railway pgvector 優化版本）
+                # 先刪除舊的資料表（如果存在）
+                cur.execute("DROP TABLE IF EXISTS lumi_memories;")
+                self.conn.commit()
+                print("🔄 [LOG] 已刪除舊的 lumi_memories 資料表")
+                
+                # 創建新的記憶資料表（Railway pgvector 優化版本）
                 cur.execute("""
-                    CREATE TABLE IF NOT EXISTS lumi_memories (
+                    CREATE TABLE lumi_memories (
                         id SERIAL PRIMARY KEY,
                         user_id TEXT NOT NULL,
                         user_message TEXT NOT NULL,
@@ -76,22 +81,22 @@ class SimpleLumiMemory:
                 
                 # 創建索引以優化查詢效能
                 cur.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_lumi_memories_user_id 
+                    CREATE INDEX idx_lumi_memories_user_id 
                     ON lumi_memories(user_id);
                 """)
                 
                 cur.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_lumi_memories_timestamp 
+                    CREATE INDEX idx_lumi_memories_timestamp 
                     ON lumi_memories(timestamp DESC);
                 """)
                 
                 cur.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_lumi_memories_emotion_tag 
+                    CREATE INDEX idx_lumi_memories_emotion_tag 
                     ON lumi_memories(emotion_tag) WHERE emotion_tag IS NOT NULL;
                 """)
                 
                 self.conn.commit()
-                print("✅ [LOG] Railway pgvector 資料庫結構初始化完成")
+                print("✅ [LOG] Railway pgvector 資料庫結構初始化完成（1536維）")
                 
         except Exception as e:
             print(f"❌ [LOG] Railway pgvector 資料庫初始化失敗: {e}")

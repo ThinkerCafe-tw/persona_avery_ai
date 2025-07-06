@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from flask import Flask, request, abort
 
 # 使用 LINE Bot SDK v3 正確導入方式
-from linebot.v3.messaging import MessagingApi, TextMessage, Configuration
+from linebot.v3.messaging import MessagingApi, TextMessage, Configuration, ReplyMessageRequest
 from linebot.v3.webhook import WebhookHandler
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from linebot.v3.exceptions import InvalidSignatureError
@@ -101,7 +101,6 @@ def handle_message(event):
             else:
                 reply_message = "抱歉，AI 系統正在初始化中，請稍後再試！"
             # 發送回覆
-            from linebot.v3.messaging import ReplyMessageRequest
             request = ReplyMessageRequest(
                 reply_token=event.reply_token,
                 messages=[TextMessage(text=reply_message)]
@@ -120,7 +119,6 @@ def handle_message(event):
         # 嘗試備用發送方式
         try:
             print("🔄 嘗試備用發送方式...")
-            from linebot.v3.messaging import ReplyMessageRequest, TextMessage
             backup_request = ReplyMessageRequest(
                 reply_token=event.reply_token,
                 messages=[TextMessage(text=reply_message)]
