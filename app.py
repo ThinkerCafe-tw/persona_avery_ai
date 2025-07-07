@@ -20,6 +20,9 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
+# 啟動確認
+logger.info("🚀 Flask app 正在啟動...")
+
 # LINE Bot 設定
 channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
 channel_secret = os.getenv('LINE_CHANNEL_SECRET')
@@ -34,6 +37,8 @@ handler = WebhookHandler(channel_secret)
 
 # 初始化記憶系統
 memory_system = simple_memory.SimpleLumiMemory()
+
+logger.info("✅ Flask app 啟動完成，所有服務已就緒")
 
 @app.route("/")
 def home():
